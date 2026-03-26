@@ -1,0 +1,25 @@
+# Project Design Document: LinAlg-C11
+
+## 1. Project Goal
+The primary objective of this project is to establish a lightweight, high-performance linear algebra library written in C (C11 standard). This library serves as a foundational component for scientific computing tasks and machine learning applications, including large language models. The design prioritizes portability across modern compiler toolchains while maintaining clean interfaces that allow for future extensibility without refactoring core data structures.
+
+## 2. Scope and Requirements
+The initial scope focuses on dense matrix operations such as multiplication, addition, and scalar scaling. Non-functional requirements emphasize performance through cache-friendly memory layouts and standard compliance to ensure the code runs on embedded systems or high-performance servers alike. The library must be thread-safe at the API level but is not required to parallelize internally unless specified in future phases. Documentation must be comprehensive enough to support automatic generation via Sphinx, ensuring that end-users can understand function parameters and behavior without digging into source code comments alone.
+
+## 3. Architecture Overview
+The architecture follows a modular pattern where data structures are defined in header files while implementation details reside in corresponding source files. All matrix data uses a row-major contiguous memory layout to optimize for sequential access patterns during iteration. Memory management is explicit, requiring the user to allocate and free matrices through provided API functions rather than using automatic stack variables for large datasets. This approach prevents buffer overflows and simplifies integration with other systems that may manage their own memory pools later on.
+
+## 4. Coding Standards
+All source files must strictly adhere to the C11 standard specification, utilizing features such as `_Static_assert` for compile-time checks and `restrict` qualifiers where appropriate to hint at pointer aliasing behavior. Naming conventions follow a consistent prefix style (e.g., `mat_create`, `vec_add`) to avoid namespace collisions when linking with other libraries. Comments are written using Doxygen syntax to facilitate automatic documentation generation, ensuring that every public function has a description of its purpose, parameters, and return values including error codes if applicable.
+
+## 5. Optimization Strategy
+Performance optimization begins with algorithmic efficiency before micro-optimizations are introduced. The baseline implementation relies on compiler auto-vectorization enabled by standard flags like `-O3` and `-march=native`. Manual SIMD intrinsics or loop unrolling will only be implemented in specific hotspots after profiling confirms that the compiler cannot optimize them automatically. This strategy ensures that the code remains maintainable and portable while reserving manual intervention for critical paths where measurable gains are verified through benchmarking tools.
+
+## 6. Initial API Specification
+The initial release includes a core set of functions for matrix lifecycle management and arithmetic operations. `mat_create` initializes a new matrix with zeroed memory, while `mat_free` handles deallocation safely to prevent leaks. Arithmetic functions like `mat_mul` return status codes indicating success or failure due to dimension mismatches rather than throwing exceptions or aborting the program. Debugging utilities such as `mat_print` are included for development purposes but should be conditionally compiled out in production builds to reduce binary size and runtime overhead.
+
+## 7. Documentation Strategy
+Documentation is generated automatically using Doxygen annotations within the source code, which are then processed by Breathe and Sphinx to create a web-accessible API reference. This pipeline ensures that the documentation remains synchronized with the actual implementation as functions evolve over time. Users will have access to both inline code comments for quick context during development and a full HTML manual for comprehensive understanding of data structures and algorithmic behavior within the library ecosystem.
+
+## 8. Future Extension Roadmap
+Future iterations will expand support to include vector operations, sparse matrix representations, and specialized machine learning primitives such as activation functions or loss computations. Advanced linear algebra features like Singular Value Decomposition may be added once the core dense operations are stable and optimized for various hardware architectures using appropriate build system configurations that allow toggling between software fallbacks and hardware-accelerated implementations based on runtime detection.
