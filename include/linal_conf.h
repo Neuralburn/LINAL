@@ -12,7 +12,7 @@
  *    Override any configuration option by defining it before including
  *    this file. Example:
  *    @code
- *    #define LINAL_MAX 1000000.0f
+ *    #define LINAL_USE_RESTRICT 1
  *    #include "linal_conf.h"
  *    #include "linal.h"
  *    @endcode
@@ -23,36 +23,79 @@
 
 /* ================ CONFIGURATION =========================================== */
 
-/* ---------------- Example Configuration ----------------------------------- */
-
-#ifndef LINAL_MAX
+#ifndef LINAL_USE_RESTRICT
 /**
- * @def LINAL_MAX
- * @brief Maximum value for LINAL operations.
+ * @def LINAL_USE_RESTRICT
+ * @brief Enable restrict keyword for pointer aliasing hints.
  *
  * @details
- *    This defines the maximum value that can be processed by LINAL.
- *    Adjust this based on your application requirements.
+ *    When enabled, function parameters use the restrict keyword to hint
+ *    to the compiler that pointers do not alias, enabling better
+ *    optimization. Set to 0 for maximum portability.
  *
  * @note
- *    The default value of 1000000 is suitable for most applications.
- *    Override this value before including this header if needed.
+ *    Default is 1 (enabled). C11 compliant compilers support restrict.
  */
-#define LINAL_MAX (1000000)
+#define LINAL_USE_RESTRICT 1
 #endif
 
-#ifndef LINAL_MIN
+#ifndef LINAL_ENABLE_DEBUG_PRINT
 /**
- * @def LINAL_MIN
- * @brief Minimum value for LINAL operations.
+ * @def LINAL_ENABLE_DEBUG_PRINT
+ * @brief Enable debug print functions in production builds.
  *
  * @details
- *    This defines the minimum value that can be processed by LINAL.
+ *    When set to 0, debug print functions like mat_print are conditionally
+ *    compiled out to reduce binary size and runtime overhead.
  *
  * @note
- *    The default value of -1000000 complements the maximum value.
+ *    Default is 1 (enabled). Set to 0 for production builds.
  */
-#define LINAL_MIN (-1000000)
+#define LINAL_ENABLE_DEBUG_PRINT 1
+#endif
+
+#ifndef LINAL_EPSILON
+/**
+ * @def LINAL_EPSILON
+ * @brief Default tolerance for floating-point comparisons.
+ *
+ * @details
+ *    Used internally for numerical comparisons where exact equality
+ *    checks may fail due to floating-point precision issues.
+ *
+ * @note
+ *    Default is 1e-10, suitable for most scientific computing tasks.
+ */
+#define LINAL_EPSILON (1e-10)
+#endif
+
+#ifndef LINAL_MAX_DIM
+/**
+ * @def LINAL_MAX_DIM
+ * @brief Maximum matrix dimension for stack allocation optimizations.
+ *
+ * @details
+ *    Matrices with dimensions <= this value may use stack allocation
+ *    in future optimizations. Currently reserved for API compatibility.
+ *
+ * @note
+ *    Default is 1024, suitable for most use cases.
+ */
+#define LINAL_MAX_DIM (1024)
+#endif
+
+/**
+ * @def LINAL_RESTRICT
+ * @brief Conditional restrict keyword based on configuration.
+ *
+ * @details
+ *    Expands to 'restrict' if LINAL_USE_RESTRICT is enabled, otherwise
+ *    expands to nothing. Use this in function declarations.
+ */
+#if LINAL_USE_RESTRICT
+#define LINAL_RESTRICT restrict
+#else
+#define LINAL_RESTRICT
 #endif
 
 #endif /* LINAL_CONF_H_ */

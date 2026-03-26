@@ -140,10 +140,12 @@ mat_copy(const Matrix src, Matrix *dest)
 int
 mat_add(const Matrix a, const Matrix b, Matrix *result)
 {
-        if (!result || !result->data || a.rows != b.rows || a.cols != b.cols
-            || a.rows != result->rows || a.cols != result->cols) {
-                fprintf(stderr,
-                        "Addition error: Dimension mismatch detected\n");
+        if (!a.data || !b.data || !result || !result->data || a.rows != b.rows
+            || a.cols != b.cols || a.rows != result->rows
+            || a.cols != result->cols) {
+                fprintf(
+                    stderr,
+                    "Addition error: Invalid matrix or dimension mismatch\n");
                 return -1;
         }
 
@@ -161,10 +163,10 @@ mat_add(const Matrix a, const Matrix b, Matrix *result)
 int
 mat_mul(const Matrix a, const Matrix b, Matrix *result)
 {
-        if (!result || !result->data || a.rows == 0 || a.cols == 0
-            || b.rows == 0 || b.cols == 0 || a.cols != b.rows) {
-                fprintf(stderr, "Multiplication error: Invalid dimensions or "
-                                "empty matrix\n");
+        if (!a.data || !b.data || !result || !result->data || a.rows == 0
+            || a.cols == 0 || b.rows == 0 || b.cols == 0 || a.cols != b.rows) {
+                fprintf(stderr, "Multiplication error: Invalid matrix or "
+                                "dimension mismatch\n");
                 return -1;
         }
 
@@ -201,9 +203,43 @@ mat_scale(const Matrix m, double scalar, Matrix *result)
                 return -1;
         }
 
+        if (m.rows != result->rows || m.cols != result->cols) {
+                fprintf(stderr, "Scale error: Dimension mismatch\n");
+                return -1;
+        }
+
         size_t count = m.rows * m.cols;
         for (size_t i = 0; i < count; i++) {
                 result->data[i] = m.data[i] * scalar;
+        }
+
+        return 0;
+}
+
+/**
+ * @brief Transpose a matrix (swap rows and columns).
+ * @param m Input matrix to transpose
+ * @param result Output matrix containing the transposed values (must have dimensions m.cols x m.rows)
+ * @return 0 on success, -1 if input is invalid or dimensions mismatch
+ */
+int
+mat_transpose(const Matrix m, Matrix *result)
+{
+        if (!m.data || !result || !result->data) {
+                fprintf(stderr, "Transpose error: Invalid matrix pointer\n");
+                return -1;
+        }
+
+        if (m.rows != result->cols || m.cols != result->rows) {
+                fprintf(stderr, "Transpose error: Dimension mismatch (expected %zu x %zu, got %zu x %zu)\n",
+                        m.cols, m.rows, result->rows, result->cols);
+                return -1;
+        }
+
+        for (size_t i = 0; i < m.rows; i++) {
+                for (size_t j = 0; j < m.cols; j++) {
+                        result->data[j * result->cols + i] = m.data[i * m.cols + j];
+                }
         }
 
         return 0;

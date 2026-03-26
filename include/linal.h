@@ -105,11 +105,22 @@ int mat_mul(const Matrix a, const Matrix b, Matrix *result);
 int mat_scale(const Matrix m, double scalar, Matrix *result);
 
 /**
+ * @brief Transpose a matrix (swap rows and columns).
+ * @param m Input matrix to transpose
+ * @param result Output matrix containing the transposed values (must have
+ * swapped dimensions)
+ * @return 0 on success, -1 if input is invalid or dimensions mismatch
+ */
+int mat_transpose(const Matrix m, Matrix *result);
+
+/**
  * @brief Print matrix contents to stdout with label header.
  * @param label Optional string identifier to print before matrix
  * @param m Matrix to display
  */
+#if LINAL_ENABLE_DEBUG_PRINT
 void mat_print(const char *label, const Matrix m);
+#endif
 
 #ifdef __cplusplus
 }
