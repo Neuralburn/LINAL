@@ -4,7 +4,7 @@ A lightweight, high-performance linear algebra library written in C11. Designed 
 
 ## Features
 
-- **Dense Matrix Operations**: Full support for matrix creation, destruction, copying, addition, and multiplication
+- **Dense Matrix Operations**: Full support for matrix creation, destruction, copying, addition, multiplication, scaling, and transposition
 - **C11 Standard Compliance**: Strict adherence to C11 specification with portable code
 - **Row-Major Memory Layout**: Contiguous memory storage optimized for sequential access patterns
 - **Explicit Memory Management**: Safe allocation and deallocation APIs to prevent leaks
@@ -135,7 +135,7 @@ int mat_copy(const Matrix src, Matrix dest);
  * @param result Output matrix containing the sum
  * @return 0 on success, -1 on dimension mismatch or invalid result
  */
-int mat_add(const Matrix a, const Matrix b, Matrix result);
+int mat_add(const Matrix a, const Matrix b, Matrix *result);
 
 /**
  * @brief Multiply two matrices together.
@@ -144,7 +144,24 @@ int mat_add(const Matrix a, const Matrix b, Matrix result);
  * @param result Output matrix containing the product
  * @return 0 on success, -1 if inner dimensions do not match
  */
-int mat_mul(const Matrix a, const Matrix b, Matrix result);
+int mat_mul(const Matrix a, const Matrix b, Matrix *result);
+
+/**
+ * @brief Scale a matrix by a scalar factor.
+ * @param m Input matrix to scale
+ * @param scalar Scalar multiplier
+ * @param result Output matrix containing the scaled values
+ * @return 0 on success, -1 if input is invalid
+ */
+int mat_scale(const Matrix m, double scalar, Matrix *result);
+
+/**
+ * @brief Transpose a matrix (swap rows and columns).
+ * @param m Input matrix to transpose
+ * @param result Output matrix containing the transposed values
+ * @return 0 on success, -1 if input is invalid or dimensions mismatch
+ */
+int mat_transpose(const Matrix m, Matrix *result);
 ```
 
 ### Debug Utilities
