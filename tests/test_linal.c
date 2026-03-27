@@ -119,7 +119,7 @@ TEST_CASE(test_mat_create_zero_dimensions)
 
 TEST_CASE(test_mat_create_allocation_failure)
 {
-        Matrix m = mat_create(1000000, 1000000);
+        Matrix m = mat_create(100000, 100000);
         TEST_ASSERT(m.data == NULL || m.rows == 0 || m.cols == 0);
         mat_free(&m);
 }
@@ -855,7 +855,8 @@ main(void)
                  "test_mat_transpose_success_square");
         run_test(test_mat_transpose_success_rectangular,
                  "test_mat_transpose_success_rectangular");
-        run_test(test_mat_transpose_null_input, "test_mat_transpose_null_input");
+        run_test(test_mat_transpose_null_input,
+                 "test_mat_transpose_null_input");
         run_test(test_mat_transpose_null_result,
                  "test_mat_transpose_null_result");
         run_test(test_mat_transpose_null_result_ptr,
