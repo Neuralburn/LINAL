@@ -340,3 +340,31 @@ mat_print(const char *label, const Matrix m)
                 fprintf(stdout, "\n");
         }
 }
+
+Matrix mat_identity(size_t n) {
+    Matrix I = mat_create(n, n);
+    for (size_t i = 0; i < n; i++) {
+        I.data[i * n + i] = 1.0;
+    }
+    return I;
+}
+
+double mat_norm_l2(const Matrix *A) {
+    double sum = 0.0;
+    for (size_t i = 0; i < A->rows; i++) {
+        for (size_t j = 0; j < A->cols; j++) {
+            double val = A->data[i * A->cols + j];
+            sum += val * val;
+        }
+    }
+    return sqrt(sum);
+}
+
+double mat_trace(const Matrix *A) {
+    double trace = 0.0;
+    size_t n = (A->rows < A->cols) ? A->rows : A->cols;
+    for (size_t i = 0; i < n; i++) {
+        trace += A->data[i * A->cols + i];
+    }
+    return trace;
+}

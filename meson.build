@@ -9,6 +9,8 @@ project(
   license: 'MIT',
 )
 
+cc = meson.get_compiler('c')
+
 project_description = 'A small linear algebra Meson-based C11 library'
 
 ver = meson.project_version().split('.')
@@ -42,16 +44,13 @@ linal_lib = static_library(
   install: true,
 )
 
-install_headers(
-  'include/linal.h',
-  'include/linal_conf.h',
-  subdir: 'linal'
-)
+math_lib = cc.find_library('m')
 
 linal_dep = declare_dependency(
   include_directories: [public_headers, generated_headers],
   link_with: linal_lib,
   sources: generated_version_header,
+  dependencies: math_lib,
 )
 
 meson.override_dependency('linal', linal_dep)

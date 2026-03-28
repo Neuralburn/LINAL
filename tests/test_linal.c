@@ -1077,6 +1077,185 @@ run_test(void (*test_func)(void), const char *name)
         TEST_PASS(name);
 }
 
+// ============================================================================
+// mat_identity tests
+// ============================================================================
+
+TEST_CASE(test_identity_1x1)
+{
+        Matrix I = mat_identity(1);
+        TEST_ASSERT(I.rows == 1);
+        TEST_ASSERT(I.cols == 1);
+        TEST_ASSERT(approx_equal(I.data[0], 1.0));
+        mat_free(&I);
+}
+
+TEST_CASE(test_identity_2x2)
+{
+        Matrix I = mat_identity(2);
+        TEST_ASSERT(I.rows == 2);
+        TEST_ASSERT(I.cols == 2);
+        TEST_ASSERT(approx_equal(I.data[0], 1.0));  // (0,0)
+        TEST_ASSERT(approx_equal(I.data[1], 0.0));  // (0,1)
+        TEST_ASSERT(approx_equal(I.data[2], 0.0));  // (1,0)
+        TEST_ASSERT(approx_equal(I.data[3], 1.0));  // (1,1)
+        mat_free(&I);
+}
+
+TEST_CASE(test_identity_3x3)
+{
+        Matrix I = mat_identity(3);
+        TEST_ASSERT(I.rows == 3);
+        TEST_ASSERT(I.cols == 3);
+        TEST_ASSERT(approx_equal(I.data[0], 1.0));  // (0,0)
+        TEST_ASSERT(approx_equal(I.data[4], 1.0));  // (1,1)
+        TEST_ASSERT(approx_equal(I.data[8], 1.0));  // (2,2)
+        TEST_ASSERT(approx_equal(I.data[1], 0.0));  // (0,1)
+        TEST_ASSERT(approx_equal(I.data[2], 0.0));  // (0,2)
+        TEST_ASSERT(approx_equal(I.data[3], 0.0));  // (1,0)
+        TEST_ASSERT(approx_equal(I.data[5], 0.0));  // (1,2)
+        TEST_ASSERT(approx_equal(I.data[6], 0.0));  // (2,0)
+        TEST_ASSERT(approx_equal(I.data[7], 0.0));  // (2,1)
+        mat_free(&I);
+}
+
+TEST_CASE(test_identity_zero_size)
+{
+        Matrix I = mat_identity(0);
+        TEST_ASSERT(I.rows == 0);
+        TEST_ASSERT(I.cols == 0);
+        TEST_ASSERT(I.data == NULL);
+        mat_free(&I);
+}
+
+TEST_CASE(test_identity_multiplicative_property_left)
+{
+        Matrix A = mat_create(2, 2);
+        A.data[0] = 1.0; A.data[1] = 2.0;
+        A.data[2] = 3.0; A.data[3] = 4.0;
+        
+        Matrix I = mat_identity(2);
+        Matrix result = mat_create(2, 2);
+        
+        int code = mat_mul(I, A, &result);
+        TEST_ASSERT(code == 0);
+        
+        for (size_t i = 0; i < 4; i++) {
+                TEST_ASSERT(approx_equal(A.data[i], result.data[i]));
+        }
+        
+        mat_free(&A);
+        mat_free(&I);
+        mat_free(&result);
+}
+
+TEST_CASE(test_identity_multiplicative_property_right)
+{
+        Matrix A = mat_create(2, 2);
+        A.data[0] = 1.0; A.data[1] = 2.0;
+        A.data[2] = 3.0; A.data[3] = 4.0;
+        
+        Matrix I = mat_identity(2);
+        Matrix result = mat_create(2, 2);
+        
+        int code = mat_mul(A, I, &result);
+        TEST_ASSERT(code == 0);
+        
+        for (size_t i = 0; i < 4; i++) {
+                TEST_ASSERT(approx_equal(A.data[i], result.data[i]));
+        }
+        
+        mat_free(&A);
+        mat_free(&I);
+        mat_free(&result);
+}
+
+TEST_CASE(test_identity_transpose_is_identity)
+{
+        Matrix I = mat_identity(3);
+        Matrix I_T = mat_create(3, 3);
+        
+        int code = mat_transpose(I, &I_T);
+        TEST_ASSERT(code == 0);
+        
+        for (size_t i = 0; i < 9; i++) {
+                TEST_ASSERT(approx_equal(I.data[i], I_T.data[i]));
+        }
+        
+        mat_free(&I);
+        mat_free(&I_T);
+}
+
+// ============================================================================
+// mat_norm_l2 tests
+// ============================================================================
+
+TEST_CASE(test_norm_l2_identity)
+{
+        Matrix I = mat_identity(3);
+        double norm = mat_norm_l2(&I);
+        TEST_ASSERT(approx_equal(norm, sqrt(3.0)));
+        mat_free(&I);
+}
+
+TEST_CASE(test_norm_l2_zero_matrix)
+{
+        Matrix A = mat_create(2, 2);
+        // All zeros by default
+        double norm = mat_norm_l2(&A);
+        TEST_ASSERT(approx_equal(norm, 0.0));
+        mat_free(&A);
+}
+
+TEST_CASE(test_norm_l2_simple)
+{
+        Matrix A = mat_create(2, 2);
+        A.data[0] = 1.0; A.data[1] = 2.0;
+        A.data[2] = 3.0; A.data[3] = 4.0;
+        
+        double norm = mat_norm_l2(&A);
+        TEST_ASSERT(approx_equal(norm, sqrt(1.0 + 4.0 + 9.0 + 16.0)));
+        mat_free(&A);
+}
+
+// ============================================================================
+// mat_trace tests
+// ============================================================================
+
+TEST_CASE(test_trace_identity)
+{
+        Matrix I = mat_identity(5);
+        double trace = mat_trace(&I);
+        TEST_ASSERT(approx_equal(trace, 5.0));
+        mat_free(&I);
+}
+
+TEST_CASE(test_trace_2x2)
+{
+        Matrix A = mat_create(2, 2);
+        A.data[0] = 1.0; A.data[1] = 2.0;
+        A.data[2] = 3.0; A.data[3] = 4.0;
+        
+        double trace = mat_trace(&A);
+        TEST_ASSERT(approx_equal(trace, 5.0));  // 1 + 4
+        mat_free(&A);
+}
+
+TEST_CASE(test_trace_non_square)
+{
+        Matrix A = mat_create(2, 3);
+        A.data[0] = 1.0; A.data[1] = 2.0; A.data[2] = 3.0;
+        A.data[3] = 4.0; A.data[4] = 5.0; A.data[5] = 6.0;
+        
+        double trace = mat_trace(&A);
+        TEST_ASSERT(approx_equal(trace, 6.0));  // 1 + 5
+        mat_free(&A);
+}
+
+// ============================================================================
+// Main test runner
+// ============================================================================
+
 int
 main(void)
 {
@@ -1162,6 +1341,28 @@ main(void)
         run_test(test_mat_set_null_matrix, "test_mat_set_null_matrix");
         run_test(test_mat_set_null_data, "test_mat_set_null_data");
         run_test(test_mat_get_set_roundtrip, "test_mat_get_set_roundtrip");
+
+        // mat_identity tests
+        run_test(test_identity_1x1, "test_identity_1x1");
+        run_test(test_identity_2x2, "test_identity_2x2");
+        run_test(test_identity_3x3, "test_identity_3x3");
+        run_test(test_identity_zero_size, "test_identity_zero_size");
+        run_test(test_identity_multiplicative_property_left,
+                 "test_identity_multiplicative_property_left");
+        run_test(test_identity_multiplicative_property_right,
+                 "test_identity_multiplicative_property_right");
+        run_test(test_identity_transpose_is_identity,
+                 "test_identity_transpose_is_identity");
+
+        // mat_norm_l2 tests
+        run_test(test_norm_l2_identity, "test_norm_l2_identity");
+        run_test(test_norm_l2_zero_matrix, "test_norm_l2_zero_matrix");
+        run_test(test_norm_l2_simple, "test_norm_l2_simple");
+
+        // mat_trace tests
+        run_test(test_trace_identity, "test_trace_identity");
+        run_test(test_trace_2x2, "test_trace_2x2");
+        run_test(test_trace_non_square, "test_trace_non_square");
 
         fprintf(stdout, "\n=== All tests passed ===\n\n");
         return EXIT_SUCCESS;

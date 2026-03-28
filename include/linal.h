@@ -186,6 +186,41 @@ int mat_set(Matrix *m, size_t row, size_t col, double value);
 void mat_print(const char *label, const Matrix m);
 #endif
 
+/**
+ * Create an identity matrix.
+ *
+ * An identity matrix I is a square matrix with ones on the main diagonal and zeros elsewhere:
+ * \f[I_{ij} = \delta_{ij} = \begin{cases} 1 & \text{if } i = j \\ 0 & \text{if } i \neq j \end{cases}\f]
+ *
+ * The identity matrix acts as the multiplicative identity: \f[A \times I = I \times A = A\f]
+ *
+ * @param n The dimension of the square identity matrix (n × n)
+ * @return A Matrix struct containing the identity matrix
+ */
+Matrix mat_identity(size_t n);
+
+/**
+ * Compute the L2 (Frobenius) norm of a matrix.
+ *
+ * The Frobenius norm is defined as: \f[\|A\|_F = \sqrt{\sum_{i=1}^{m}\sum_{j=1}^{n} |a_{ij}|^2}\f]
+ *
+ * @param A The input matrix
+ * @return The L2 norm as a double value
+ */
+double mat_norm_l2(const Matrix *A);
+
+/**
+ * Compute the trace of a matrix (sum of diagonal elements).
+ *
+ * The trace is defined as: \f[\text{tr}(A) = \sum_{i=1}^{n} a_{ii}\f]
+ *
+ * For non-square matrices, only the diagonal elements up to min(rows, cols) are summed.
+ *
+ * @param A The input matrix
+ * @return The trace as a double value
+ */
+double mat_trace(const Matrix *A);
+
 #ifdef __cplusplus
 }
 #endif
