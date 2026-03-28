@@ -47,3 +47,12 @@
 
 # Meson build output
 build/
+builddir/
+
+# Sphinx/Doxygen documentation output
+docs/_build/
+docs/doc_output/
+docs/_static/
+
+# Linter caches
+.ruff_cache/
