@@ -368,3 +368,197 @@ double mat_trace(const Matrix *A) {
     }
     return trace;
 }
+
+/**
+ * @brief Compute determinant using cofactor expansion for small matrices.
+ * @param data Pointer to matrix data (must be n × n)
+ * @param n Size of the square matrix
+ * @return Determinant value
+ */
+static double
+det_cofactor(const double *data, size_t n)
+{
+        if (n == 1) {
+                return data[0];
+        }
+
+        if (n == 2) {
+                return data[0] * data[3] - data[1] * data[2];
+        }
+
+        double det = 0.0;
+        double *minor = (double *)malloc((n - 1) * (n - 1) * sizeof(double));
+        if (!minor) {
+                return 0.0;
+        }
+
+        for (size_t col = 0; col < n; col++) {
+                size_t minor_idx = 0;
+                for (size_t i = 1; i < n; i++) {
+                        for (size_t j = 0; j < n; j++) {
+                                if (j != col) {
+                                        minor[minor_idx++] = data[i * n + j];
+                                }
+                        }
+                }
+
+                double sign = (col % 2 == 0) ? 1.0 : -1.0;
+                det += sign * data[col] * det_cofactor(minor, n - 1);
+        }
+
+        free(minor);
+        return det;
+}
+
+double mat_det(const Matrix *A) {
+    if (!A || !A->data || A->rows != A->cols) {
+        return 0.0;
+    }
+
+    return det_cofactor(A->data, A->rows);
+}
+
+/**
+ * @brief Compute the Frobenius inner product (dot product) of two matrices.
+ *
+ * The dot product is defined as:
+ *   A · B = Σᵢⱼ Aᵢⱼ × Bᵢⱼ
+ *
+ * Properties:
+ * - Commutative: A · B = B · A
+ * - Linear: (αA + βB) · C = α(A · C) + β(B · C)
+ * - Positive definite: A · A ≥ 0, with equality iff A = 0
+ * - Related to Frobenius norm: ||A||_F = sqrt(A · A)
+ * - Cauchy-Schwarz: |A · B| ≤ ||A||_F × ||B||_F
+ *
+ * @param A First matrix (m × n)
+ * @param B Second matrix (must also be m × n)
+ * @return Dot product value on success, NaN if dimensions mismatch
+ */
+double
+mat_dot(const Matrix A, const Matrix B)
+{
+        if (!A.data || !B.data || A.rows != B.rows || A.cols != B.cols) {
+                return NAN;
+        }
+
+        double sum = 0.0;
+        size_t count = A.rows * A.cols;
+
+        for (size_t i = 0; i < count; i++) {
+                sum += A.data[i] * B.data[i];
+        }
+
+        return sum;
+}
+
+/**
+ * @brief Compute the inverse of a square matrix using Gauss-Jordan elimination.
+ *
+ * Algorithm:
+ * 1. Create augmented matrix [A | I]
+ * 2. For each column, normalize pivot row and eliminate other rows
+ * 3. Extract inverse from right half of augmented matrix
+ *
+ * @param A The input square matrix (must be n × n and non-singular)
+ * @param result Output matrix containing the inverse (must be pre-allocated with same dimensions)
+ * @return 0 on success, -1 if matrix is singular or not square
+ */
+int
+mat_inv(const Matrix A, Matrix *result)
+{
+        if (!A.data || !result || !result->data) {
+                fprintf(stderr, "mat_inv: Invalid matrix pointer\n");
+                return -1;
+        }
+
+        if (A.rows != A.cols) {
+                fprintf(stderr, "mat_inv: Matrix must be square\n");
+                return -1;
+        }
+
+        if (A.rows != result->rows || A.cols != result->cols) {
+                fprintf(stderr, "mat_inv: Result dimension mismatch\n");
+                return -1;
+        }
+
+        size_t n = A.rows;
+
+        // Check for singularity
+        double det = mat_det(&A);
+        if (fabs(det) < 1e-15) {
+                fprintf(stderr, "mat_inv: Matrix is singular (det ≈ 0)\n");
+                return -1;
+        }
+
+        // Create augmented matrix [A | I]
+        double *aug = (double *)malloc(n * (2 * n) * sizeof(double));
+        if (!aug) {
+                fprintf(stderr, "mat_inv: Memory allocation failed\n");
+                return -1;
+        }
+
+        // Initialize augmented matrix: left side = A, right side = I
+        for (size_t i = 0; i < n; i++) {
+                for (size_t j = 0; j < n; j++) {
+                        aug[i * (2 * n) + j] = A.data[i * n + j];  // Left: A
+                        aug[i * (2 * n) + n + j] = (i == j) ? 1.0 : 0.0;  // Right: I
+                }
+        }
+
+        // Gauss-Jordan elimination
+        for (size_t col = 0; col < n; col++) {
+                // Find pivot (largest absolute value in column)
+                size_t pivot_row = col;
+                double max_val = fabs(aug[col * (2 * n) + col]);
+                for (size_t i = col + 1; i < n; i++) {
+                        double val = fabs(aug[i * (2 * n) + col]);
+                        if (val > max_val) {
+                                max_val = val;
+                                pivot_row = i;
+                        }
+                }
+
+                // Check for zero pivot (singular matrix)
+                if (max_val < 1e-15) {
+                        free(aug);
+                        fprintf(stderr, "mat_inv: Matrix is singular (zero pivot)\n");
+                        return -1;
+                }
+
+                // Swap rows if needed
+                if (pivot_row != col) {
+                        for (size_t j = 0; j < 2 * n; j++) {
+                                double temp = aug[col * (2 * n) + j];
+                                aug[col * (2 * n) + j] = aug[pivot_row * (2 * n) + j];
+                                aug[pivot_row * (2 * n) + j] = temp;
+                        }
+                }
+
+                // Normalize pivot row
+                double pivot = aug[col * (2 * n) + col];
+                for (size_t j = 0; j < 2 * n; j++) {
+                        aug[col * (2 * n) + j] /= pivot;
+                }
+
+                // Eliminate column in all other rows
+                for (size_t i = 0; i < n; i++) {
+                        if (i != col) {
+                                double factor = aug[i * (2 * n) + col];
+                                for (size_t j = 0; j < 2 * n; j++) {
+                                        aug[i * (2 * n) + j] -= factor * aug[col * (2 * n) + j];
+                                }
+                        }
+                }
+        }
+
+        // Extract inverse from right half of augmented matrix
+        for (size_t i = 0; i < n; i++) {
+                for (size_t j = 0; j < n; j++) {
+                        result->data[i * n + j] = aug[i * (2 * n) + n + j];
+                }
+        }
+
+        free(aug);
+        return 0;
+}
