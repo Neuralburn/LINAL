@@ -102,78 +102,35 @@ int main(void)
 ### Matrix Lifecycle
 
 ```c
-/**
- * @brief Create a new matrix with specified dimensions, initializing data to zero.
- * @param r Number of rows to create
- * @param c Number of columns to create
- * @return New Matrix struct initialized with zeros
- */
 Matrix mat_create(size_t r, size_t c);
-
-/**
- * @brief Free the memory associated with a matrix.
- * @param m Pointer to Matrix whose data field shall be freed
- */
 void mat_free(Matrix *m);
-
-/**
- * @brief Deep copy the source matrix into destination matrix.
- * @param src Source matrix to copy from
- * @param dest Destination matrix (must have matching dimensions)
- * @return 0 on success, -1 if dimensions mismatch or memory fails
- */
-int mat_copy(const Matrix src, Matrix dest);
+int mat_copy(const Matrix src, Matrix *dest);
 ```
 
 ### Arithmetic Operations
 
 ```c
-/**
- * @brief Add two matrices element-wise.
- * @param a First operand
- * @param b Second operand
- * @param result Output matrix containing the sum
- * @return 0 on success, -1 on dimension mismatch or invalid result
- */
 int mat_add(const Matrix a, const Matrix b, Matrix *result);
-
-/**
- * @brief Multiply two matrices together.
- * @param a Left operand
- * @param b Right operand
- * @param result Output matrix containing the product
- * @return 0 on success, -1 if inner dimensions do not match
- */
 int mat_mul(const Matrix a, const Matrix b, Matrix *result);
-
-/**
- * @brief Scale a matrix by a scalar factor.
- * @param m Input matrix to scale
- * @param scalar Scalar multiplier
- * @param result Output matrix containing the scaled values
- * @return 0 on success, -1 if input is invalid
- */
 int mat_scale(const Matrix m, double scalar, Matrix *result);
-
-/**
- * @brief Transpose a matrix (swap rows and columns).
- * @param m Input matrix to transpose
- * @param result Output matrix containing the transposed values
- * @return 0 on success, -1 if input is invalid or dimensions mismatch
- */
 int mat_transpose(const Matrix m, Matrix *result);
+int mat_sub(const Matrix a, const Matrix b, Matrix *result);
+```
+
+### Element Access
+
+```c
+double mat_get(const Matrix m, size_t row, size_t col);
+int mat_set(Matrix *m, size_t row, size_t col, double value);
 ```
 
 ### Debug Utilities
 
 ```c
-/**
- * @brief Print matrix contents to stdout with label header.
- * @param label Optional string identifier to print before matrix
- * @param m Matrix to display
- */
 void mat_print(const char *label, const Matrix m);
 ```
+
+For detailed documentation, see the Doxygen comments in `include/linal.h`.
 
 ## Use Cases
 
