@@ -48,6 +48,7 @@ make help       # Show help message
 - `Doxyfile` - Doxygen configuration file
 - `conf.py` - Sphinx configuration file
 - `index.rst` - Main documentation page
+- `operations.rst` - Narrative guide for matrix operations and examples
 - `api/` - API reference documentation
 - `_build/` - Generated output (gitignored)
 
@@ -61,7 +62,7 @@ The documentation is generated from:
 ## Adding New Documentation
 
 1. Add Doxygen comments to your source code in the standard format
-2. Update `index.rst` or create new `.rst` files in the `api/` directory
+2. Update `index.rst`, `operations.rst`, or create new `.rst` files as needed
 3. Run `make html` to regenerate the documentation
 
 ## Doxygen Comment Format

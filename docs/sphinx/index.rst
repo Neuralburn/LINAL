@@ -10,83 +10,20 @@ Table of Contents
    :maxdepth: 2
    :caption: Contents:
 
+   operations
    api/modules
 
 API Reference
 -------------
 
-The LINAL library provides a comprehensive set of matrix operations for
-scientific computing. All functions are documented below.
+The LINAL library provides a compact C API for creating, transforming, and
+analyzing dense matrices.
 
-.. doxygenstruct:: Matrix
-   :project: linal
-   :members:
+For worked examples, algebraic definitions, and complexity notes, see the
+`Operations Guide <operations.html>`_.
 
-Matrix Operations
-~~~~~~~~~~~~~~~~~
-
-Creation and Memory Management
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. doxygenfunction:: mat_create
-   :project: linal
-
-.. doxygenfunction:: mat_free
-   :project: linal
-
-.. doxygenfunction:: mat_copy
-   :project: linal
-
-.. doxygenfunction:: mat_identity
-   :project: linal
-
-Arithmetic Operations
-^^^^^^^^^^^^^^^^^^^^^
-
-.. doxygenfunction:: mat_add
-   :project: linal
-
-.. doxygenfunction:: mat_sub
-   :project: linal
-
-.. doxygenfunction:: mat_mul
-   :project: linal
-
-.. doxygenfunction:: mat_scale
-   :project: linal
-
-.. doxygenfunction:: mat_transpose
-   :project: linal
-
-Element Access
-^^^^^^^^^^^^^^
-
-.. doxygenfunction:: mat_get
-   :project: linal
-
-.. doxygenfunction:: mat_set
-   :project: linal
-
-Utility Functions
-^^^^^^^^^^^^^^^^^
-
-.. doxygenfunction:: mat_print
-   :project: linal
-
-.. doxygenfunction:: mat_norm_l2
-   :project: linal
-
-.. doxygenfunction:: mat_trace
-   :project: linal
-
-.. doxygenfunction:: mat_det
-   :project: linal
-
-.. doxygenfunction:: mat_inv
-   :project: linal
-
-.. doxygenfunction:: mat_dot
-   :project: linal
+The full symbol-level reference is available in the
+`API Reference <api/modules.html>`_.
 
 Quick Start
 -----------
@@ -110,7 +47,7 @@ Here's a simple example of how to use LINAL:
        Matrix I = mat_identity(3);
        
        // Multiply matrices
-       Matrix result;
+       Matrix result = mat_create(3, 3);
        mat_mul(A, I, &result);
        
        // Clean up
