@@ -114,6 +114,34 @@ int mat_scale(const Matrix m, double scalar, Matrix *result);
 int mat_transpose(const Matrix m, Matrix *result);
 
 /**
+ * @brief Subtract two matrices element-wise (A - B).
+ * @param a First operand (minuend)
+ * @param b Second operand (subtrahend)
+ * @param result Output matrix containing the difference (must not alias a or b)
+ * @return 0 on success, -1 on dimension mismatch or invalid result
+ */
+int mat_sub(const Matrix a, const Matrix b, Matrix *result);
+
+/**
+ * @brief Get element at specified row and column.
+ * @param m Matrix to access
+ * @param row Row index (0-based)
+ * @param col Column index (0-based)
+ * @return Element value on success, NaN if indices out of bounds
+ */
+double mat_get(const Matrix m, size_t row, size_t col);
+
+/**
+ * @brief Set element at specified row and column.
+ * @param m Matrix to modify
+ * @param row Row index (0-based)
+ * @param col Column index (0-based)
+ * @param value Value to set
+ * @return 0 on success, -1 if indices out of bounds
+ */
+int mat_set(Matrix *m, size_t row, size_t col, double value);
+
+/**
  * @brief Print matrix contents to stdout with label header.
  * @param label Optional string identifier to print before matrix
  * @param m Matrix to display

@@ -7,6 +7,7 @@
 
 #include "linal.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -219,7 +220,8 @@ mat_scale(const Matrix m, double scalar, Matrix *result)
 /**
  * @brief Transpose a matrix (swap rows and columns).
  * @param m Input matrix to transpose
- * @param result Output matrix containing the transposed values (must have dimensions m.cols x m.rows)
+ * @param result Output matrix containing the transposed values (must have
+ * dimensions m.cols x m.rows)
  * @return 0 on success, -1 if input is invalid or dimensions mismatch
  */
 int
@@ -231,17 +233,81 @@ mat_transpose(const Matrix m, Matrix *result)
         }
 
         if (m.rows != result->cols || m.cols != result->rows) {
-                fprintf(stderr, "Transpose error: Dimension mismatch (expected %zu x %zu, got %zu x %zu)\n",
+                fprintf(stderr,
+                        "Transpose error: Dimension mismatch (expected %zu x "
+                        "%zu, got %zu x %zu)\n",
                         m.cols, m.rows, result->rows, result->cols);
                 return -1;
         }
 
         for (size_t i = 0; i < m.rows; i++) {
                 for (size_t j = 0; j < m.cols; j++) {
-                        result->data[j * result->cols + i] = m.data[i * m.cols + j];
+                        result->data[j * result->cols + i] =
+                            m.data[i * m.cols + j];
                 }
         }
 
+        return 0;
+}
+
+/**
+ * @brief Subtract two matrices element-wise (A - B).
+ * @param a First operand (minuend)
+ * @param b Second operand (subtrahend)
+ * @param result Output matrix containing the difference (must not alias a or b)
+ * @return 0 on success, -1 on dimension mismatch or invalid result
+ */
+int
+mat_sub(const Matrix a, const Matrix b, Matrix *result)
+{
+        if (!a.data || !b.data || !result || !result->data || a.rows != b.rows
+            || a.cols != b.cols || a.rows != result->rows
+            || a.cols != result->cols) {
+                fprintf(stderr, "Subtraction error: Invalid matrix or "
+                                "dimension mismatch\n");
+                return -1;
+        }
+
+        size_t count = a.rows * a.cols;
+        for (size_t i = 0; i < count; i++) {
+                result->data[i] = a.data[i] - b.data[i];
+        }
+        return 0;
+}
+
+/**
+ * @brief Get element at specified row and column.
+ * @param m Matrix to access
+ * @param row Row index (0-based)
+ * @param col Column index (0-based)
+ * @return Element value on success, NaN if indices out of bounds
+ */
+double
+mat_get(const Matrix m, size_t row, size_t col)
+{
+        if (!m.data || row >= m.rows || col >= m.cols) {
+                return NAN;
+        }
+
+        return m.data[row * m.cols + col];
+}
+
+/**
+ * @brief Set element at specified row and column.
+ * @param m Matrix to modify
+ * @param row Row index (0-based)
+ * @param col Column index (0-based)
+ * @param value Value to set
+ * @return 0 on success, -1 if indices out of bounds
+ */
+int
+mat_set(Matrix *m, size_t row, size_t col, double value)
+{
+        if (!m || !m->data || row >= m->rows || col >= m->cols) {
+                return -1;
+        }
+
+        m->data[row * m->cols + col] = value;
         return 0;
 }
 
