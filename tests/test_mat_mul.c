@@ -121,8 +121,7 @@ TEST_CASE(test_mat_mul_null_result)
 {
         Matrix a = mat_create(2, 2);
         Matrix b = mat_create(2, 2);
-        Matrix result = mat_create(2, 2);
-        result.data = NULL;
+        Matrix result = {.rows = 2, .cols = 2, .data = NULL};
 
         init_matrix(&a, 2, 2, (double[]){1.0, 2.0, 3.0, 4.0});
         init_matrix(&b, 2, 2, (double[]){5.0, 6.0, 7.0, 8.0});
@@ -133,13 +132,11 @@ TEST_CASE(test_mat_mul_null_result)
 
         mat_free(&a);
         mat_free(&b);
-        mat_free(&result);
 }
 
 TEST_CASE(test_mat_mul_null_input_a)
 {
-        Matrix a = mat_create(2, 2);
-        a.data = NULL;
+        Matrix a = {.rows = 2, .cols = 2, .data = NULL};
         Matrix b = mat_create(2, 2);
         Matrix result = mat_create(2, 2);
 
@@ -149,7 +146,6 @@ TEST_CASE(test_mat_mul_null_input_a)
 
         TEST_ASSERT(result_code == -1);
 
-        mat_free(&a);
         mat_free(&b);
         mat_free(&result);
 }
@@ -157,8 +153,7 @@ TEST_CASE(test_mat_mul_null_input_a)
 TEST_CASE(test_mat_mul_null_input_b)
 {
         Matrix a = mat_create(2, 2);
-        Matrix b = mat_create(2, 2);
-        b.data = NULL;
+        Matrix b = {.rows = 2, .cols = 2, .data = NULL};
         Matrix result = mat_create(2, 2);
 
         init_matrix(&a, 2, 2, (double[]){1.0, 2.0, 3.0, 4.0});
@@ -168,7 +163,6 @@ TEST_CASE(test_mat_mul_null_input_b)
         TEST_ASSERT(result_code == -1);
 
         mat_free(&a);
-        mat_free(&b);
         mat_free(&result);
 }
 

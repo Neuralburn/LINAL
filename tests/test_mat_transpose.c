@@ -61,23 +61,20 @@ TEST_CASE(test_mat_transpose_success_rectangular)
 
 TEST_CASE(test_mat_transpose_null_input)
 {
-        Matrix m = mat_create(2, 2);
-        m.data = NULL;
+        Matrix m = {.rows = 2, .cols = 2, .data = NULL};
         Matrix result = mat_create(2, 2);
 
         int result_code = mat_transpose(m, &result);
 
         TEST_ASSERT(result_code == -1);
 
-        mat_free(&m);
         mat_free(&result);
 }
 
 TEST_CASE(test_mat_transpose_null_result)
 {
         Matrix m = mat_create(2, 2);
-        Matrix result = mat_create(2, 2);
-        result.data = NULL;
+        Matrix result = {.rows = 2, .cols = 2, .data = NULL};
 
         init_matrix(&m, 2, 2, (double[]){1.0, 2.0, 3.0, 4.0});
 
@@ -86,7 +83,6 @@ TEST_CASE(test_mat_transpose_null_result)
         TEST_ASSERT(result_code == -1);
 
         mat_free(&m);
-        mat_free(&result);
 }
 
 TEST_CASE(test_mat_transpose_null_result_ptr)

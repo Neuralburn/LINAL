@@ -12,8 +12,7 @@ TEST_CASE(test_mat_free_null)
 
 TEST_CASE(test_mat_free_invalid)
 {
-        Matrix m = mat_create(2, 2);
-        m.data = NULL;
+        Matrix m = {.rows = 2, .cols = 2, .data = NULL};
         mat_free(&m);
 }
 
@@ -63,8 +62,7 @@ TEST_CASE(test_mat_copy_dimension_mismatch)
 TEST_CASE(test_mat_copy_null_dest)
 {
         Matrix src = mat_create(2, 2);
-        Matrix dest = mat_create(2, 2);
-        dest.data = NULL;
+        Matrix dest = {.rows = 2, .cols = 2, .data = NULL};
 
         init_matrix(&src, 2, 2, (double[]){1.0, 2.0, 3.0, 4.0});
 
@@ -73,7 +71,6 @@ TEST_CASE(test_mat_copy_null_dest)
         TEST_ASSERT(result == -1);
 
         mat_free(&src);
-        mat_free(&dest);
 }
 
 int

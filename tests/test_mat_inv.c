@@ -172,14 +172,12 @@ TEST_CASE(test_inv_non_square_returns_error)
 
 TEST_CASE(test_inv_null_input)
 {
-        Matrix A = mat_create(2, 2);
-        A.data = NULL;
+        Matrix A = {.rows = 2, .cols = 2, .data = NULL};
 
         Matrix inv = mat_create(2, 2);
         int code = mat_inv(A, &inv);
         TEST_ASSERT(code == -1);
 
-        mat_free(&A);
         mat_free(&inv);
 }
 
@@ -191,14 +189,12 @@ TEST_CASE(test_inv_null_result)
         A.data[2] = 3.0;
         A.data[3] = 4.0;
 
-        Matrix inv = mat_create(2, 2);
-        inv.data = NULL;
+        Matrix inv = {.rows = 2, .cols = 2, .data = NULL};
 
         int code = mat_inv(A, &inv);
         TEST_ASSERT(code == -1);
 
         mat_free(&A);
-        mat_free(&inv);
 }
 
 TEST_CASE(test_inv_null_result_ptr)

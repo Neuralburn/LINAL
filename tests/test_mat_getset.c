@@ -52,13 +52,10 @@ TEST_CASE(test_mat_get_out_of_bounds_col)
 
 TEST_CASE(test_mat_get_null_data)
 {
-        Matrix m = mat_create(2, 2);
-        m.data = NULL;
+        Matrix m = {.rows = 2, .cols = 2, .data = NULL};
 
         double val = mat_get(m, 0, 0);
         TEST_ASSERT(isnan(val));
-
-        mat_free(&m);
 }
 
 TEST_CASE(test_mat_set_success)
@@ -112,13 +109,10 @@ TEST_CASE(test_mat_set_null_matrix)
 
 TEST_CASE(test_mat_set_null_data)
 {
-        Matrix m = mat_create(2, 2);
-        m.data = NULL;
+        Matrix m = {.rows = 2, .cols = 2, .data = NULL};
 
         int result = mat_set(&m, 0, 0, 1.0);
         TEST_ASSERT(result == -1);
-
-        mat_free(&m);
 }
 
 TEST_CASE(test_mat_get_set_roundtrip)
