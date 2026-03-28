@@ -79,6 +79,13 @@ int mat_copy(const Matrix src, Matrix *dest);
 
 /**
  * @brief Add two matrices element-wise.
+ *
+ * Computes the element-wise sum of two matrices:
+ * @verbatim
+ *   C = A + B
+ *   C_ij = A_ij + B_ij
+ * @endverbatim
+ *
  * @param a First operand
  * @param b Second operand
  * @param result Output matrix containing the sum (must not alias a or b)
@@ -88,15 +95,31 @@ int mat_add(const Matrix a, const Matrix b, Matrix *result);
 
 /**
  * @brief Multiply two matrices together.
- * @param a Left operand
- * @param b Right operand
- * @param result Output matrix containing the product (must not alias a or b)
+ *
+ * Computes the matrix product using standard linear algebra multiplication:
+ * @verbatim
+ *   C = A × B
+ *   C_ij = Σ_k(A_ik × B_kj)
+ * @endverbatim
+ *
+ * Requires A.cols == B.cols for valid multiplication.
+ *
+ * @param a Left operand (m × k matrix)
+ * @param b Right operand (k × n matrix)
+ * @param result Output matrix containing the product (m × n matrix)
  * @return 0 on success, -1 if inner dimensions do not match
  */
 int mat_mul(const Matrix a, const Matrix b, Matrix *result);
 
 /**
  * @brief Scale a matrix by a scalar factor.
+ *
+ * Multiplies each element of the matrix by a scalar value:
+ * @verbatim
+ *   B = α × A
+ *   B_ij = α × A_ij
+ * @endverbatim
+ *
  * @param m Input matrix to scale
  * @param scalar Scalar multiplier
  * @param result Output matrix containing the scaled values (must not alias m)
@@ -106,15 +129,28 @@ int mat_scale(const Matrix m, double scalar, Matrix *result);
 
 /**
  * @brief Transpose a matrix (swap rows and columns).
- * @param m Input matrix to transpose
- * @param result Output matrix containing the transposed values (must have
- * swapped dimensions)
+ *
+ * Computes the matrix transpose by swapping rows and columns:
+ * @verbatim
+ *   B = A^T
+ *   B_ij = A_ji
+ * @endverbatim
+ *
+ * @param m Input matrix to transpose (m × n matrix)
+ * @param result Output matrix containing the transposed values (n × m matrix)
  * @return 0 on success, -1 if input is invalid or dimensions mismatch
  */
 int mat_transpose(const Matrix m, Matrix *result);
 
 /**
- * @brief Subtract two matrices element-wise (A - B).
+ * @brief Subtract two matrices element-wise.
+ *
+ * Computes the element-wise difference of two matrices:
+ * @verbatim
+ *   C = A - B
+ *   C_ij = A_ij - B_ij
+ * @endverbatim
+ *
  * @param a First operand (minuend)
  * @param b Second operand (subtrahend)
  * @param result Output matrix containing the difference (must not alias a or b)
