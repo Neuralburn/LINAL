@@ -81,10 +81,8 @@ int mat_copy(const Matrix src, Matrix *dest);
  * @brief Add two matrices element-wise.
  *
  * Computes the element-wise sum of two matrices:
- * @verbatim
- *   C = A + B
- *   C_ij = A_ij + B_ij
- * @endverbatim
+ * @f$ C = A + B @f$
+ * @f$ C_{ij} = A_{ij} + B_{ij} @f$
  *
  * @param a First operand
  * @param b Second operand
@@ -97,12 +95,10 @@ int mat_add(const Matrix a, const Matrix b, Matrix *result);
  * @brief Multiply two matrices together.
  *
  * Computes the matrix product using standard linear algebra multiplication:
- * @verbatim
- *   C = A × B
- *   C_ij = Σ_k(A_ik × B_kj)
- * @endverbatim
+ * @f$ C = A \times B @f$
+ * @f$ C_{ij} = \sum_k(A_{ik} \times B_{kj}) @f$
  *
- * Requires A.cols == B.cols for valid multiplication.
+ * Requires A.cols == B.rows for valid multiplication.
  *
  * @param a Left operand (m × k matrix)
  * @param b Right operand (k × n matrix)
@@ -115,10 +111,8 @@ int mat_mul(const Matrix a, const Matrix b, Matrix *result);
  * @brief Scale a matrix by a scalar factor.
  *
  * Multiplies each element of the matrix by a scalar value:
- * @verbatim
- *   B = α × A
- *   B_ij = α × A_ij
- * @endverbatim
+ * @f$ B = \alpha \times A @f$
+ * @f$ B_{ij} = \alpha \times A_{ij} @f$
  *
  * @param m Input matrix to scale
  * @param scalar Scalar multiplier
@@ -131,10 +125,8 @@ int mat_scale(const Matrix m, double scalar, Matrix *result);
  * @brief Transpose a matrix (swap rows and columns).
  *
  * Computes the matrix transpose by swapping rows and columns:
- * @verbatim
- *   B = A^T
- *   B_ij = A_ji
- * @endverbatim
+ * @f$ B = A^T @f$
+ * @f$ B_{ij} = A_{ji} @f$
  *
  * @param m Input matrix to transpose (m × n matrix)
  * @param result Output matrix containing the transposed values (n × m matrix)
@@ -146,10 +138,8 @@ int mat_transpose(const Matrix m, Matrix *result);
  * @brief Subtract two matrices element-wise.
  *
  * Computes the element-wise difference of two matrices:
- * @verbatim
- *   C = A - B
- *   C_ij = A_ij - B_ij
- * @endverbatim
+ * @f$ C = A - B @f$
+ * @f$ C_{ij} = A_{ij} - B_{ij} @f$
  *
  * @param a First operand (minuend)
  * @param b Second operand (subtrahend)
