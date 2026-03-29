@@ -40,7 +40,7 @@ approx_equal(double a, double b)
 }
 
 /* Compare two matrices for equality */
-static int
+static int __attribute__((unused))
 mat_equal(const Matrix a, const Matrix b)
 {
         if (a.rows != b.rows || a.cols != b.cols) {
@@ -57,7 +57,7 @@ mat_equal(const Matrix a, const Matrix b)
 }
 
 /* Initialize matrix with given values */
-static void
+static void __attribute__((unused))
 init_matrix(Matrix *m, size_t rows, size_t cols, const double *values)
 {
         TEST_ASSERT(m->data != NULL);
