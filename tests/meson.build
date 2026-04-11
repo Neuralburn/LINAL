@@ -90,6 +90,13 @@ test_mat_inv = executable(
   include_directories: [public_headers, generated_headers],
 )
 
+test_stress = executable(
+  'test_stress',
+  files('test_stress.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+
 # Run all tests
 test('mat_create', test_mat_create)
 test('mat_memory', test_mat_memory)
@@ -104,3 +111,4 @@ test('mat_trace', test_mat_trace)
 test('mat_dot', test_mat_dot)
 test('mat_det', test_mat_det)
 test('mat_inv', test_mat_inv)
+test('stress', test_stress)

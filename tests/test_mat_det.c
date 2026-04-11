@@ -119,6 +119,15 @@ TEST_CASE(test_det_null_data)
         TEST_ASSERT(approx_equal(det, 0.0));
 }
 
+TEST_CASE(test_det_large_matrix)
+{
+        size_t n = 20;
+        Matrix I = mat_identity(n);
+        double det = mat_det(&I);
+        TEST_ASSERT(approx_equal(det, 1.0));
+        mat_free(&I);
+}
+
 int
 main(void)
 {
@@ -135,6 +144,7 @@ main(void)
                  "test_det_non_square_returns_zero");
         run_test(test_det_null_matrix, "test_det_null_matrix");
         run_test(test_det_null_data, "test_det_null_data");
+        run_test(test_det_large_matrix, "test_det_large_matrix");
 
         fprintf(stdout, "\n=== All mat_det tests passed ===\n\n");
         return EXIT_SUCCESS;

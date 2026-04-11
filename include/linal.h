@@ -220,10 +220,9 @@ double mat_trace(const Matrix *A);
  * Compute the determinant of a square matrix.
  *
  * The determinant is a scalar value computed from a square matrix using
- * cofactor expansion:
- * \f[\det(A) = \sum_{j=1}^{n} (-1)^{i+j} a_{ij} \det(M_{ij})\f]
- * where \f$M_{ij}\f$ is the minor matrix obtained by removing row i and column
- * j.
+ * Gaussian elimination to reduce the matrix to an upper triangular form.
+ * \f[\det(A) = \prod_{i=1}^{n} a_{ii} \text{ (after row operations and
+ * adjustments)}\f]
  *
  * Properties:
  * - \f$\det(A) = 0\f$ if and only if A is singular (non-invertible)

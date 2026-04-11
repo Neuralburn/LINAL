@@ -397,6 +397,20 @@ TEST_CASE(test_inv_4x4_non_singular)
         mat_free(&result);
 }
 
+TEST_CASE(test_inv_large_matrix)
+{
+        size_t n = 20;
+        Matrix I = mat_identity(n);
+        Matrix inv = mat_create(n, n);
+        int code = mat_inv(I, &inv);
+        TEST_ASSERT(code == 0);
+        for (size_t i = 0; i < n * n; i++) {
+                TEST_ASSERT(approx_equal(I.data[i], inv.data[i]));
+        }
+        mat_free(&I);
+        mat_free(&inv);
+}
+
 int
 main(void)
 {
@@ -424,6 +438,7 @@ main(void)
         run_test(test_inv_double_inverse, "test_inv_double_inverse");
         run_test(test_inv_4x4, "test_inv_4x4");
         run_test(test_inv_4x4_non_singular, "test_inv_4x4_non_singular");
+        run_test(test_inv_large_matrix, "test_inv_large_matrix");
 
         fprintf(stdout, "\n=== All mat_inv tests passed ===\n\n");
         return EXIT_SUCCESS;

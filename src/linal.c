@@ -176,13 +176,12 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
 
         /* Compute C[i][j] = sum_k(A[i][k] * B[k][j]) */
         for (size_t i = 0; i < a.rows; i++) {
-                for (size_t j = 0; j < b.cols; j++) {
-                        double sum = 0.0;
-                        for (size_t k = 0; k < a.cols; k++) {
-                                sum += a.data[i * a.cols + k]
-                                       * b.data[k * b.cols + j];
+                for (size_t k = 0; k < a.cols; k++) {
+                        double factor = a.data[i * a.cols + k];
+                        for (size_t j = 0; j < b.cols; j++) {
+                                result->data[i * result->cols + j] +=
+                                    factor * b.data[k * b.cols + j];
                         }
-                        result->data[i * result->cols + j] = sum;
                 }
         }
 
@@ -341,81 +340,96 @@ mat_print(const char *label, const Matrix m)
         }
 }
 
-Matrix mat_identity(size_t n) {
-    Matrix I = mat_create(n, n);
-    for (size_t i = 0; i < n; i++) {
-        I.data[i * n + i] = 1.0;
-    }
-    return I;
-}
-
-double mat_norm_l2(const Matrix *A) {
-    double sum = 0.0;
-    for (size_t i = 0; i < A->rows; i++) {
-        for (size_t j = 0; j < A->cols; j++) {
-            double val = A->data[i * A->cols + j];
-            sum += val * val;
-        }
-    }
-    return sqrt(sum);
-}
-
-double mat_trace(const Matrix *A) {
-    double trace = 0.0;
-    size_t n = (A->rows < A->cols) ? A->rows : A->cols;
-    for (size_t i = 0; i < n; i++) {
-        trace += A->data[i * A->cols + i];
-    }
-    return trace;
-}
-
-/**
- * @brief Compute determinant using cofactor expansion for small matrices.
- * @param data Pointer to matrix data (must be n × n)
- * @param n Size of the square matrix
- * @return Determinant value
- */
-static double
-det_cofactor(const double *data, size_t n)
+Matrix
+mat_identity(size_t n)
 {
-        if (n == 1) {
-                return data[0];
+        Matrix I = mat_create(n, n);
+        for (size_t i = 0; i < n; i++) {
+                I.data[i * n + i] = 1.0;
         }
+        return I;
+}
 
-        if (n == 2) {
-                return data[0] * data[3] - data[1] * data[2];
+double
+mat_norm_l2(const Matrix *A)
+{
+        double sum = 0.0;
+        for (size_t i = 0; i < A->rows; i++) {
+                for (size_t j = 0; j < A->cols; j++) {
+                        double val = A->data[i * A->cols + j];
+                        sum += val * val;
+                }
         }
+        return sqrt(sum);
+}
 
-        double det = 0.0;
-        double *minor = (double *)malloc((n - 1) * (n - 1) * sizeof(double));
-        if (!minor) {
+double
+mat_trace(const Matrix *A)
+{
+        double trace = 0.0;
+        size_t n = (A->rows < A->cols) ? A->rows : A->cols;
+        for (size_t i = 0; i < n; i++) {
+                trace += A->data[i * A->cols + i];
+        }
+        return trace;
+}
+
+double
+mat_det(const Matrix *A)
+{
+        if (!A || !A->data || A->rows != A->cols) {
                 return 0.0;
         }
 
-        for (size_t col = 0; col < n; col++) {
-                size_t minor_idx = 0;
-                for (size_t i = 1; i < n; i++) {
-                        for (size_t j = 0; j < n; j++) {
-                                if (j != col) {
-                                        minor[minor_idx++] = data[i * n + j];
-                                }
+        size_t n = A->rows;
+        if (n == 0) {
+                return 0.0;
+        }
+
+        /* Create a copy to avoid modifying the original matrix */
+        double *temp = (double *)malloc(n * n * sizeof(double));
+        if (!temp) {
+                return 0.0;
+        }
+        memcpy(temp, A->data, n * n * sizeof(double));
+
+        double det = 1.0;
+        for (size_t i = 0; i < n; i++) {
+                /* Pivot selection */
+                size_t pivot = i;
+                for (size_t j = i + 1; j < n; j++) {
+                        if (fabs(temp[j * n + i]) > fabs(temp[pivot * n + i])) {
+                                pivot = j;
                         }
                 }
 
-                double sign = (col % 2 == 0) ? 1.0 : -1.0;
-                det += sign * data[col] * det_cofactor(minor, n - 1);
+                if (pivot != i) {
+                        /* Swap rows */
+                        for (size_t k = 0; k < n; k++) {
+                                double t = temp[i * n + k];
+                                temp[i * n + k] = temp[pivot * n + k];
+                                temp[pivot * n + k] = t;
+                        }
+                        det *= -1.0;
+                }
+
+                if (fabs(temp[i * n + i]) < 1e-15) {
+                        free(temp);
+                        return 0.0;
+                }
+
+                det *= temp[i * n + i];
+
+                for (size_t j = i + 1; j < n; j++) {
+                        double factor = temp[j * n + i] / temp[i * n + i];
+                        for (size_t k = i + 1; k < n; k++) {
+                                temp[j * n + k] -= factor * temp[i * n + k];
+                        }
+                }
         }
 
-        free(minor);
+        free(temp);
         return det;
-}
-
-double mat_det(const Matrix *A) {
-    if (!A || !A->data || A->rows != A->cols) {
-        return 0.0;
-    }
-
-    return det_cofactor(A->data, A->rows);
 }
 
 /**
@@ -461,7 +475,8 @@ mat_dot(const Matrix A, const Matrix B)
  * 3. Extract inverse from right half of augmented matrix
  *
  * @param A The input square matrix (must be n × n and non-singular)
- * @param result Output matrix containing the inverse (must be pre-allocated with same dimensions)
+ * @param result Output matrix containing the inverse (must be pre-allocated
+ * with same dimensions)
  * @return 0 on success, -1 if matrix is singular or not square
  */
 int
@@ -484,13 +499,6 @@ mat_inv(const Matrix A, Matrix *result)
 
         size_t n = A.rows;
 
-        // Check for singularity
-        double det = mat_det(&A);
-        if (fabs(det) < 1e-15) {
-                fprintf(stderr, "mat_inv: Matrix is singular (det ≈ 0)\n");
-                return -1;
-        }
-
         // Create augmented matrix [A | I]
         double *aug = (double *)malloc(n * (2 * n) * sizeof(double));
         if (!aug) {
@@ -501,8 +509,9 @@ mat_inv(const Matrix A, Matrix *result)
         // Initialize augmented matrix: left side = A, right side = I
         for (size_t i = 0; i < n; i++) {
                 for (size_t j = 0; j < n; j++) {
-                        aug[i * (2 * n) + j] = A.data[i * n + j];  // Left: A
-                        aug[i * (2 * n) + n + j] = (i == j) ? 1.0 : 0.0;  // Right: I
+                        aug[i * (2 * n) + j] = A.data[i * n + j]; // Left: A
+                        aug[i * (2 * n) + n + j] =
+                            (i == j) ? 1.0 : 0.0; // Right: I
                 }
         }
 
@@ -522,7 +531,8 @@ mat_inv(const Matrix A, Matrix *result)
                 // Check for zero pivot (singular matrix)
                 if (max_val < 1e-15) {
                         free(aug);
-                        fprintf(stderr, "mat_inv: Matrix is singular (zero pivot)\n");
+                        fprintf(stderr,
+                                "mat_inv: Matrix is singular (zero pivot)\n");
                         return -1;
                 }
 
@@ -530,7 +540,8 @@ mat_inv(const Matrix A, Matrix *result)
                 if (pivot_row != col) {
                         for (size_t j = 0; j < 2 * n; j++) {
                                 double temp = aug[col * (2 * n) + j];
-                                aug[col * (2 * n) + j] = aug[pivot_row * (2 * n) + j];
+                                aug[col * (2 * n) + j] =
+                                    aug[pivot_row * (2 * n) + j];
                                 aug[pivot_row * (2 * n) + j] = temp;
                         }
                 }
@@ -546,7 +557,8 @@ mat_inv(const Matrix A, Matrix *result)
                         if (i != col) {
                                 double factor = aug[i * (2 * n) + col];
                                 for (size_t j = 0; j < 2 * n; j++) {
-                                        aug[i * (2 * n) + j] -= factor * aug[col * (2 * n) + j];
+                                        aug[i * (2 * n) + j] -=
+                                            factor * aug[col * (2 * n) + j];
                                 }
                         }
                 }
