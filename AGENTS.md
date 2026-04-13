@@ -70,7 +70,4 @@ The implementation should adhere to the project design document at `docs/design/
 - Error codes (int return values) instead of exceptions
 - Thread-safe API level (no internal parallelization required)
 
-Known issues to address:
-- `mat_mul` implementation incomplete (missing computation logic)
-- `mat_scale` function not yet implemented
-- Test coverage needs expansion beyond placeholder tests
+All core functions are implemented and tested.
