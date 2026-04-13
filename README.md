@@ -79,12 +79,12 @@ int main(void)
     mat_print("Matrix B:", B);
 
     // Add matrices: C = A + B
-    mat_add(A, B, C);
+    mat_add(A, B, &C);
     mat_print("Matrix C (A + B):", C);
 
     // Multiply matrices (requires compatible dimensions)
     Matrix D = mat_create(3, 3);
-    mat_mul(A, B, D);
+    mat_mul(A, B, &D);
     mat_print("Matrix D (A * B):", D);
 
     // Clean up
@@ -111,10 +111,20 @@ int mat_copy(const Matrix src, Matrix *dest);
 
 ```c
 int mat_add(const Matrix a, const Matrix b, Matrix *result);
+int mat_sub(const Matrix a, const Matrix b, Matrix *result);
 int mat_mul(const Matrix a, const Matrix b, Matrix *result);
 int mat_scale(const Matrix m, double scalar, Matrix *result);
 int mat_transpose(const Matrix m, Matrix *result);
-int mat_sub(const Matrix a, const Matrix b, Matrix *result);
+int mat_inv(const Matrix A, Matrix *result);
+```
+
+### Scalar Queries
+
+```c
+double mat_norm_l2(const Matrix *A);
+double mat_trace(const Matrix *A);
+double mat_det(const Matrix *A);
+double mat_dot(const Matrix A, const Matrix B);
 ```
 
 ### Element Access
@@ -122,6 +132,12 @@ int mat_sub(const Matrix a, const Matrix b, Matrix *result);
 ```c
 double mat_get(const Matrix m, size_t row, size_t col);
 int mat_set(Matrix *m, size_t row, size_t col, double value);
+```
+
+### Construction Helpers
+
+```c
+Matrix mat_identity(size_t n);
 ```
 
 ### Debug Utilities
@@ -145,7 +161,7 @@ For detailed documentation, see the Doxygen comments in `include/linal.h`.
 |-------|------|
 | **Memory Layout** | Matrices use row-major contiguous memory layout for cache-friendly access patterns |
 | **Thread Safety** | API is thread-safe at the level of individual function calls |
-| **Error Handling** | Functions return status codes; check return values for errors |
+| **Error Handling** | `int`-returning functions use 0/−1; `double`-returning functions return NaN on error |
 | **Data Types** | All matrix elements are stored as `double` for numerical precision |
 | **Dimension Validation** | All arithmetic operations validate dimensions and return error codes on mismatch |
 | **Memory Ownership** | Users are responsible for freeing matrices via `mat_free()` to prevent leaks |

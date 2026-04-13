@@ -35,6 +35,12 @@ TEST_CASE(test_norm_l2_simple)
         mat_free(&A);
 }
 
+TEST_CASE(test_norm_l2_null_pointer)
+{
+        double norm = mat_norm_l2(NULL);
+        TEST_ASSERT(isnan(norm));
+}
+
 int
 main(void)
 {
@@ -43,6 +49,7 @@ main(void)
         run_test(test_norm_l2_identity, "test_norm_l2_identity");
         run_test(test_norm_l2_zero_matrix, "test_norm_l2_zero_matrix");
         run_test(test_norm_l2_simple, "test_norm_l2_simple");
+        run_test(test_norm_l2_null_pointer, "test_norm_l2_null_pointer");
 
         fprintf(stdout, "\n=== All mat_norm tests passed ===\n\n");
         return EXIT_SUCCESS;

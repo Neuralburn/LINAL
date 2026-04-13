@@ -95,18 +95,18 @@ TEST_CASE(test_det_zero_matrix)
         mat_free(&A);
 }
 
-TEST_CASE(test_det_non_square_returns_zero)
+TEST_CASE(test_det_non_square_returns_nan)
 {
         Matrix A = mat_create(2, 3);
         double det = mat_det(&A);
-        TEST_ASSERT(approx_equal(det, 0.0));
+        TEST_ASSERT(isnan(det));
         mat_free(&A);
 }
 
 TEST_CASE(test_det_null_matrix)
 {
         double det = mat_det(NULL);
-        TEST_ASSERT(approx_equal(det, 0.0));
+        TEST_ASSERT(isnan(det));
 }
 
 TEST_CASE(test_det_null_data)
@@ -116,7 +116,7 @@ TEST_CASE(test_det_null_data)
         A.cols = 2;
 
         double det = mat_det(&A);
-        TEST_ASSERT(approx_equal(det, 0.0));
+        TEST_ASSERT(isnan(det));
 }
 
 TEST_CASE(test_det_large_matrix)
@@ -140,8 +140,8 @@ main(void)
         run_test(test_det_identity, "test_det_identity");
         run_test(test_det_diagonal, "test_det_diagonal");
         run_test(test_det_zero_matrix, "test_det_zero_matrix");
-        run_test(test_det_non_square_returns_zero,
-                 "test_det_non_square_returns_zero");
+        run_test(test_det_non_square_returns_nan,
+                 "test_det_non_square_returns_nan");
         run_test(test_det_null_matrix, "test_det_null_matrix");
         run_test(test_det_null_data, "test_det_null_data");
         run_test(test_det_large_matrix, "test_det_large_matrix");

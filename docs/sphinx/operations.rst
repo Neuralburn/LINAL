@@ -437,9 +437,24 @@ Complexity Overview
 Error Handling
 --------------
 
-Operations that return ``int`` use the following convention:
+The API uses two error-reporting conventions, chosen by return type:
+
+**Functions returning** ``int`` **(mutating operations)**:
 
 - ``0`` on success
-- ``-1`` on error, such as a null data pointer or a dimension mismatch
+- ``-1`` on error (null pointer, dimension mismatch, singular matrix, etc.)
+
+**Functions returning** ``double`` **(scalar queries)**:
+
+- The computed value on success
+- ``NaN`` on error (null pointer, invalid matrix, dimension mismatch, non-square
+  input where square is required)
+
+Callers should check with ``isnan()`` from ``<math.h>``.
+
+**Functions returning** ``Matrix`` **(constructors)**:
+
+- A valid ``Matrix`` on success
+- A zeroed struct with ``.data = NULL`` on allocation failure
 
 This keeps the API explicit and predictable in plain C code.

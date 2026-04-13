@@ -41,6 +41,12 @@ TEST_CASE(test_trace_non_square)
         mat_free(&A);
 }
 
+TEST_CASE(test_trace_null_pointer)
+{
+        double trace = mat_trace(NULL);
+        TEST_ASSERT(isnan(trace));
+}
+
 int
 main(void)
 {
@@ -49,6 +55,7 @@ main(void)
         run_test(test_trace_identity, "test_trace_identity");
         run_test(test_trace_2x2, "test_trace_2x2");
         run_test(test_trace_non_square, "test_trace_non_square");
+        run_test(test_trace_null_pointer, "test_trace_null_pointer");
 
         fprintf(stdout, "\n=== All mat_trace tests passed ===\n\n");
         return EXIT_SUCCESS;

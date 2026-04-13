@@ -177,7 +177,7 @@ void mat_print(const char *label, const Matrix m);
 #endif
 
 /**
- * Create an identity matrix.
+ * @brief Create an identity matrix.
  *
  * An identity matrix I is a square matrix with ones on the main diagonal and
  * zeros elsewhere:
@@ -193,31 +193,31 @@ void mat_print(const char *label, const Matrix m);
 Matrix mat_identity(size_t n);
 
 /**
- * Compute the L2 (Frobenius) norm of a matrix.
+ * @brief Compute the L2 (Frobenius) norm of a matrix.
  *
  * The Frobenius norm is defined as: \f[\|A\|_F =
  * \sqrt{\sum_{i=1}^{m}\sum_{j=1}^{n} |a_{ij}|^2}\f]
  *
- * @param A The input matrix
- * @return The L2 norm as a double value
+ * @param A The input matrix (must not be NULL)
+ * @return The L2 norm as a double value, or NaN if A is NULL or invalid
  */
 double mat_norm_l2(const Matrix *A);
 
 /**
- * Compute the trace of a matrix (sum of diagonal elements).
+ * @brief Compute the trace of a matrix (sum of diagonal elements).
  *
  * The trace is defined as: \f[\text{tr}(A) = \sum_{i=1}^{n} a_{ii}\f]
  *
  * For non-square matrices, only the diagonal elements up to min(rows, cols) are
  * summed.
  *
- * @param A The input matrix
- * @return The trace as a double value
+ * @param A The input matrix (must not be NULL)
+ * @return The trace as a double value, or NaN if A is NULL or invalid
  */
 double mat_trace(const Matrix *A);
 
 /**
- * Compute the determinant of a square matrix.
+ * @brief Compute the determinant of a square matrix.
  *
  * The determinant is a scalar value computed from a square matrix using
  * Gaussian elimination to reduce the matrix to an upper triangular form.
@@ -231,12 +231,13 @@ double mat_trace(const Matrix *A);
  * - For 2×2: \f$\det\begin{pmatrix}a & b \\ c & d\end{pmatrix} = ad - bc\f$
  *
  * @param A The input square matrix (must be n × n)
- * @return The determinant as a double value, or 0 if matrix is not square
+ * @return The determinant as a double value, or NaN if matrix is NULL, invalid,
+ *         or not square
  */
 double mat_det(const Matrix *A);
 
 /**
- * Compute the inverse of a square matrix using Gauss-Jordan elimination.
+ * @brief Compute the inverse of a square matrix using Gauss-Jordan elimination.
  *
  * The inverse of a matrix A is defined such that: \f[A \times A^{-1} = A^{-1}
  * \times A = I\f] where I is the identity matrix.
@@ -256,7 +257,7 @@ double mat_det(const Matrix *A);
 int mat_inv(const Matrix A, Matrix *result);
 
 /**
- * Compute the dot product (Frobenius inner product) of two matrices.
+ * @brief Compute the dot product (Frobenius inner product) of two matrices.
  *
  * The dot product is defined as the sum of element-wise products:
  * \f[\text{dot}(A, B) = \langle A, B \rangle = \sum_{i=1}^{m} \sum_{j=1}^{n}
