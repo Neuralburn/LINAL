@@ -68,10 +68,12 @@ int main(void)
     Matrix B = mat_create(3, 3);
     Matrix C = mat_create(3, 3);
 
-    // Initialize with some values (manually set data)
-    for (size_t i = 0; i < 9; i++) {
-        A.data[i] = (double)(i + 1);
-        B.data[i] = (double)(i + 1) * 2;
+    // Initialize with some values
+    for (size_t i = 0; i < 3; i++) {
+        for (size_t j = 0; j < 3; j++) {
+            mat_set(&A, i, j, (double)(i * 3 + j + 1));
+            mat_set(&B, i, j, (double)(i * 3 + j + 1) * 2);
+        }
     }
 
     // Print matrices
