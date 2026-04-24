@@ -71,3 +71,5 @@ The implementation should adhere to the project design document at `docs/design/
 - Thread-safe API level (no internal parallelization required)
 
 All core functions are implemented and tested.
+
+If a bug has been identified, you should test against the API and adhear to the contracts defined. This is to ensure you are not bypassing protections by isolating snippets of code. We do not support the user violating contracts or bypassing the API.
