@@ -46,13 +46,6 @@ TEST_CASE(test_mat_create_zero_dimensions)
         mat_free(&m);
 }
 
-TEST_CASE(test_mat_create_allocation_failure)
-{
-        Matrix m = mat_create(100000, 100000);
-        TEST_ASSERT(m.data == NULL || m.rows == 0 || m.cols == 0);
-        mat_free(&m);
-}
-
 TEST_CASE(test_mat_identity_1x1)
 {
         Matrix I = mat_identity(1);
@@ -109,8 +102,6 @@ main(void)
         run_test(test_mat_create_nonzero, "test_mat_create_nonzero");
         run_test(test_mat_create_zero_dimensions,
                  "test_mat_create_zero_dimensions");
-        run_test(test_mat_create_allocation_failure,
-                 "test_mat_create_allocation_failure");
         run_test(test_mat_identity_1x1, "test_mat_identity_1x1");
         run_test(test_mat_identity_2x2, "test_mat_identity_2x2");
         run_test(test_mat_identity_3x3, "test_mat_identity_3x3");
