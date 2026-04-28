@@ -1,5 +1,7 @@
 # LINAL
 
+[![CI](https://github.com/Neuralburn/LINAL/actions/workflows/ci.yml/badge.svg)](https://github.com/Neuralburn/LINAL/actions/workflows/ci.yml)
+
 A lightweight, high-performance linear algebra library written in C11. Designed for scientific computing and machine learning applications, with a focus on portability, cache-friendly memory layouts, and clean interfaces.
 
 ## Features
@@ -159,11 +161,11 @@ For detailed documentation, see the Doxygen comments in `include/linal.h`.
 
 ## Notes
 
-| Topic | Note |
-|-------|------|
-| **Memory Layout** | Matrices use row-major contiguous memory layout for cache-friendly access patterns |
-| **Thread Safety** | API is thread-safe at the level of individual function calls |
-| **Error Handling** | `int`-returning functions use 0/−1; `double`-returning functions return NaN on error |
-| **Data Types** | All matrix elements are stored as `double` for numerical precision |
-| **Dimension Validation** | All arithmetic operations validate dimensions and return error codes on mismatch |
-| **Memory Ownership** | Users are responsible for freeing matrices via `mat_free()` to prevent leaks |
+| Topic                    | Note                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| **Memory Layout**        | Matrices use row-major contiguous memory layout for cache-friendly access patterns   |
+| **Thread Safety**        | API is thread-safe at the level of individual function calls                         |
+| **Error Handling**       | `int`-returning functions use 0/−1; `double`-returning functions return NaN on error |
+| **Data Types**           | All matrix elements are stored as `double` for numerical precision                   |
+| **Dimension Validation** | All arithmetic operations validate dimensions and return error codes on mismatch     |
+| **Memory Ownership**     | Users are responsible for freeing matrices via `mat_free()` to prevent leaks         |
