@@ -296,11 +296,14 @@ mat_scale(const Matrix m, double scalar, Matrix *result)
 
 /**
  * @brief Transpose a matrix (swap rows and columns).
+ * Uses cache blocking/tiling for large matrices to ensure both reads
+ * and writes are sequential within each block, fitting in L1 cache.
  * @param m Input matrix to transpose
  * @param result Output matrix containing the transposed values (must have
  * dimensions m.cols x m.rows)
  * @return 0 on success, -1 if input is invalid or dimensions mismatch
  */
+__attribute__((optimize("O3")))
 int
 mat_transpose(const Matrix m, Matrix *result)
 {
@@ -317,12 +320,57 @@ mat_transpose(const Matrix m, Matrix *result)
                 return -1;
         }
 
-        for (size_t i = 0; i < m.rows; i++) {
-                for (size_t j = 0; j < m.cols; j++) {
-                        result->data[j * result->cols + i] =
-                            m.data[i * m.cols + j];
+        size_t rows = m.rows;
+        size_t cols = m.cols;
+
+        /* Block size tuned for L1 cache (~32KB). 64×64 doubles ≈ 32KB. */
+#define TRANSPOSE_BLOCK 64
+
+        if (rows > TRANSPOSE_BLOCK && cols > TRANSPOSE_BLOCK) {
+                const double *M  = m.data;
+                double *R        = result->data;
+                /* Buffered block transpose: load block row-by-row (sequential reads),
+                 * then write transposed with sequential dest writes.
+                 * Block size chosen so buffer fits in L1 cache (~32KB for 64x64). */
+                double buf[TRANSPOSE_BLOCK * TRANSPOSE_BLOCK];
+                for (size_t ii = 0; ii < rows; ii += TRANSPOSE_BLOCK) {
+                        size_t i_end =
+                            (ii + TRANSPOSE_BLOCK < rows)
+                                ? ii + TRANSPOSE_BLOCK : rows;
+                        size_t bh = i_end - ii;
+                        for (size_t jj = 0; jj < cols; jj += TRANSPOSE_BLOCK) {
+                                size_t j_end = (jj + TRANSPOSE_BLOCK < cols)
+                                                   ? jj + TRANSPOSE_BLOCK
+                                                   : cols;
+                                size_t bw = j_end - jj;
+
+                                /* Load source block into buffer row-by-row */
+                                for (size_t bi = 0; bi < bh; bi++) {
+                                        const double *src = M + (ii + bi) * cols + jj;
+                                        double *dst_buf   = buf + bi * bw;
+                                        memcpy(dst_buf, src, bw * sizeof(double));
+                                }
+
+                                /* Write transposed: outer=bj(dest row), inner=bi(dest col)
+                                 * This gives sequential writes along each dest row. */
+                                for (size_t bj = 0; bj < bw; bj++) {
+                                        double *dst_row = R + (jj + bj) * rows + ii;
+                                        for (size_t bi = 0; bi < bh; bi++) {
+                                                dst_row[bi] = buf[bi * bw + bj];
+                                        }
+                                }
+                        }
+                }
+        } else {
+                /* Small matrix — naive loop is fine */
+                for (size_t i = 0; i < rows; i++) {
+                        for (size_t j = 0; j < cols; j++) {
+                                result->data[j * rows + i] =
+                                    m.data[i * cols + j];
+                        }
                 }
         }
+#undef TRANSPOSE_BLOCK
 
         return 0;
 }
