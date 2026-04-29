@@ -82,4 +82,8 @@ Total improvement: **-94.1% from original baseline** (18,789 → ~1,102 µS medi
 - **Serial path unroll 4x→8x**: marginal +1% — consistency with parallel path
 - **OpenMP scheduling tested**: static > dynamic(4) > guided(4)
 - **Threshold tuning**: 16 optimal (8 too low, 32 too high for benchmark sizes)
+- **-ffast-math flag**: -10% on large matrices (256×256: 0.535ms vs 0.594ms baseline) — enables aggressive FP reassociation and guaranteed FMA
+- **Global `-O3` vs attribute-only**: identical results (1,101 vs ~1,102 µS) — function-level O3 is sufficient
+- **-funroll-loops flag**: mixed results, masked by thermal variance
 - **Measurement variance warning**: results can vary 5-7x due to CPU thermal throttling on shared systems; run benchmarks after system cools down
+- **Direct benchmark recommended**: for small improvements (< 5%), use direct `gcc ... tests/benchmark_mat_mul.c src/linal.c -lm && ./a.out` instead of autoresearch.sh to avoid accumulated thermal throttling during long autoresearch runs
