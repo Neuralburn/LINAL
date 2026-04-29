@@ -64,8 +64,3 @@ autoresearch.checks.sh
 autoresearch.config.json
 autoresearch.jsonl
 autoresearch.md
-autoresearch.sh
-
-# Autoresearch build artifacts
-autoresearch.sh
-benchmark_mat_add
