@@ -579,22 +579,27 @@ mat_trace(const Matrix *A)
                 return NAN;
         }
         size_t n = (A->rows < A->cols) ? A->rows : A->cols;
-        /* Use 4 accumulators to break dependency chain and enable ILP */
+        /* Use 8 accumulators to break dependency chain and enable more ILP */
         double t0 = 0.0, t1 = 0.0, t2 = 0.0, t3 = 0.0;
+        double t4 = 0.0, t5 = 0.0, t6 = 0.0, t7 = 0.0;
         const double *diag = A->data;
         size_t stride = A->cols;
         size_t i = 0;
         #pragma GCC ivdep
-        for (; i + 3 < n; i += 4) {
+        for (; i + 7 < n; i += 8) {
                 t0 += diag[i * stride + i];
                 t1 += diag[(i + 1) * stride + (i + 1)];
                 t2 += diag[(i + 2) * stride + (i + 2)];
                 t3 += diag[(i + 3) * stride + (i + 3)];
+                t4 += diag[(i + 4) * stride + (i + 4)];
+                t5 += diag[(i + 5) * stride + (i + 5)];
+                t6 += diag[(i + 6) * stride + (i + 6)];
+                t7 += diag[(i + 7) * stride + (i + 7)];
         }
         for (; i < n; i++) {
                 t0 += diag[i * stride + i];
         }
-        return t0 + t1 + t2 + t3;
+        return t0 + t1 + t2 + t3 + t4 + t5 + t6 + t7;
 }
 
 double
