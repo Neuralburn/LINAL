@@ -662,24 +662,41 @@ mat_inv(const Matrix A, Matrix *result)
                 }
 
                 // Eliminate column in all other rows
-                // Split into two loops to avoid branch per iteration:
-                // rows before col, then rows after col
-                for (size_t i = 0; i < col; i++) {
-                        double factor = aug[i * stride + col];
-                        double *target_row = aug + i * stride;
-                        #pragma GCC ivdep
-                        for (size_t j = 0; j < stride; j++) {
-                                target_row[j] -=
-                                    factor * pivot_row_ptr[j];
+#if defined(_OPENMP)
+                if (n >= 64) {
+#pragma omp parallel for schedule(static)
+                        for (long idx = 0; idx < (long)n; idx++) {
+                                size_t i = (size_t)idx;
+                                if (i == col) continue;
+                                double factor = aug[i * stride + col];
+                                double *target_row = aug + i * stride;
+                                #pragma GCC ivdep
+                                for (size_t j = 0; j < stride; j++) {
+                                        target_row[j] -=
+                                            factor * pivot_row_ptr[j];
+                                }
                         }
-                }
-                for (size_t i = col + 1; i < n; i++) {
-                        double factor = aug[i * stride + col];
-                        double *target_row = aug + i * stride;
-                        #pragma GCC ivdep
-                        for (size_t j = 0; j < stride; j++) {
-                                target_row[j] -=
-                                    factor * pivot_row_ptr[j];
+                } else
+#endif
+                {
+                        // Serial: split to avoid branch per iteration
+                        for (size_t i = 0; i < col; i++) {
+                                double factor = aug[i * stride + col];
+                                double *target_row = aug + i * stride;
+                                #pragma GCC ivdep
+                                for (size_t j = 0; j < stride; j++) {
+                                        target_row[j] -=
+                                            factor * pivot_row_ptr[j];
+                                }
+                        }
+                        for (size_t i = col + 1; i < n; i++) {
+                                double factor = aug[i * stride + col];
+                                double *target_row = aug + i * stride;
+                                #pragma GCC ivdep
+                                for (size_t j = 0; j < stride; j++) {
+                                        target_row[j] -=
+                                            factor * pivot_row_ptr[j];
+                                }
                         }
                 }
         }
