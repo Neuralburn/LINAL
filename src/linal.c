@@ -615,9 +615,24 @@ mat_dot(const Matrix A, const Matrix B)
         double sum = 0.0;
         size_t count = A.rows * A.cols;
 
+#if defined(_OPENMP)
+        if (count >= 4096) {
+#pragma omp parallel for simd reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        sum += A.data[i] * B.data[i];
+                }
+        } else {
+#pragma omp simd reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        sum += A.data[i] * B.data[i];
+                }
+        }
+#else
+#pragma GCC ivdep
         for (size_t i = 0; i < count; i++) {
                 sum += A.data[i] * B.data[i];
         }
+#endif
 
         return sum;
 }
