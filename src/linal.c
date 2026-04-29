@@ -184,11 +184,15 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
                                 double factor = a.data[i * a.cols + k];
                                 const double *b_row = b.data + k * b.cols;
                                 size_t j = 0;
-                                for (; j + 3 < b.cols; j += 4) {
+                                for (; j + 7 < b.cols; j += 8) {
                                         r_row[j]     += factor * b_row[j];
                                         r_row[j + 1] += factor * b_row[j + 1];
                                         r_row[j + 2] += factor * b_row[j + 2];
                                         r_row[j + 3] += factor * b_row[j + 3];
+                                        r_row[j + 4] += factor * b_row[j + 4];
+                                        r_row[j + 5] += factor * b_row[j + 5];
+                                        r_row[j + 6] += factor * b_row[j + 6];
+                                        r_row[j + 7] += factor * b_row[j + 7];
                                 }
                                 for (; j < b.cols; j++) {
                                         r_row[j] += factor * b_row[j];
