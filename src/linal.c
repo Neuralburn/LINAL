@@ -137,7 +137,10 @@ mat_copy(const Matrix src, Matrix *dest)
 /**
  * @brief Perform element-wise addition of two matrices.
  * Both matrices must have identical dimensions for a successful result.
+ * Uses auto-vectorization with ivdep hint for serial path and OpenMP simd
+ * parallelism for large matrices (≥4096 elements).
  */
+__attribute__((optimize("O3")))
 int
 mat_add(const Matrix a, const Matrix b, Matrix *result)
 {
@@ -153,17 +156,23 @@ mat_add(const Matrix a, const Matrix b, Matrix *result)
         size_t count = a.rows * a.cols;
 
 #if defined(_OPENMP)
-        /* Parallelize only for large matrices to avoid thread overhead */
-        if (count >= 1024) {
-#pragma omp parallel for schedule(static)
+        /* Parallelize only for large matrices to avoid thread overhead.
+         * Threshold of 16384 elements (~128×128) avoids boundary spikes. */
+        if (count >= 16384) {
+#pragma omp parallel for simd
                 for (size_t i = 0; i < count; i++) {
                         result->data[i] = a.data[i] + b.data[i];
                 }
         } else
 #endif
         {
+                /* Let compiler auto-vectorize with ivdep hint */
+                const double *A = a.data;
+                const double *B = b.data;
+                double *R       = result->data;
+                #pragma GCC ivdep
                 for (size_t i = 0; i < count; i++) {
-                        result->data[i] = a.data[i] + b.data[i];
+                        R[i] = A[i] + B[i];
                 }
         }
         return 0;
