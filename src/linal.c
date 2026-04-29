@@ -161,6 +161,7 @@ mat_add(const Matrix a, const Matrix b, Matrix *result)
  * @brief Perform matrix multiplication: C = A * B
  * Optimizes loop ordering for cache locality during computation.
  */
+__attribute__((optimize("O3")))
 int
 mat_mul(const Matrix a, const Matrix b, Matrix *result)
 {
@@ -174,13 +175,53 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
         /* Zero-initialize result matrix first */
         memset(result->data, 0, result->rows * result->cols * sizeof(double));
 
-        /* Compute C[i][j] = sum_k(A[i][k] * B[k][j]) */
-        for (size_t i = 0; i < a.rows; i++) {
-                for (size_t k = 0; k < a.cols; k++) {
-                        double factor = a.data[i * a.cols + k];
-                        for (size_t j = 0; j < b.cols; j++) {
-                                result->data[i * result->cols + j] +=
-                                    factor * b.data[k * b.cols + j];
+        /* O3 matmul: parallel for large matrices, serial for small ones */
+        if (a.rows <= 16) {
+                /* Serial version: avoids OpenMP thread overhead for tiny matrices */
+                for (size_t i = 0; i < a.rows; i++) {
+                        double *r_row = result->data + i * result->cols;
+                        for (size_t k = 0; k < a.cols; k++) {
+                                double factor = a.data[i * a.cols + k];
+                                const double *b_row = b.data + k * b.cols;
+                                size_t j = 0;
+                                for (; j + 7 < b.cols; j += 8) {
+                                        r_row[j]     += factor * b_row[j];
+                                        r_row[j + 1] += factor * b_row[j + 1];
+                                        r_row[j + 2] += factor * b_row[j + 2];
+                                        r_row[j + 3] += factor * b_row[j + 3];
+                                        r_row[j + 4] += factor * b_row[j + 4];
+                                        r_row[j + 5] += factor * b_row[j + 5];
+                                        r_row[j + 6] += factor * b_row[j + 6];
+                                        r_row[j + 7] += factor * b_row[j + 7];
+                                }
+                                for (; j < b.cols; j++) {
+                                        r_row[j] += factor * b_row[j];
+                                }
+                        }
+                }
+        } else {
+                /* Parallel version: OpenMP on i-loop with 8x unroll */
+#pragma omp parallel for schedule(static)
+                for (size_t i = 0; i < a.rows; i++) {
+                        double *r_row = result->data + i * result->cols;
+                        for (size_t k = 0; k < a.cols; k++) {
+                                double factor = a.data[i * a.cols + k];
+                                const double *b_row = b.data + k * b.cols;
+                                size_t j = 0;
+                                #pragma GCC ivdep
+                                for (; j + 7 < b.cols; j += 8) {
+                                        r_row[j]     += factor * b_row[j];
+                                        r_row[j + 1] += factor * b_row[j + 1];
+                                        r_row[j + 2] += factor * b_row[j + 2];
+                                        r_row[j + 3] += factor * b_row[j + 3];
+                                        r_row[j + 4] += factor * b_row[j + 4];
+                                        r_row[j + 5] += factor * b_row[j + 5];
+                                        r_row[j + 6] += factor * b_row[j + 6];
+                                        r_row[j + 7] += factor * b_row[j + 7];
+                                }
+                                for (; j < b.cols; j++) {
+                                        r_row[j] += factor * b_row[j];
+                                }
                         }
                 }
         }
