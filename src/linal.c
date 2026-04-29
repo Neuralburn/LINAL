@@ -252,11 +252,14 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
 
 /**
  * @brief Scale a matrix by a scalar factor.
+ * Uses auto-vectorization with ivdep hint for serial path and OpenMP simd
+ * parallelism for large matrices (≥16384 elements).
  * @param m Input matrix to scale
  * @param scalar Scalar multiplier
  * @param result Output matrix containing the scaled values (must not alias m)
  * @return 0 on success, -1 if input is invalid
  */
+__attribute__((optimize("O3")))
 int
 mat_scale(const Matrix m, double scalar, Matrix *result)
 {
@@ -272,16 +275,19 @@ mat_scale(const Matrix m, double scalar, Matrix *result)
 
         size_t count = m.rows * m.cols;
 #if defined(_OPENMP)
-        if (count >= 1024) {
-#pragma omp parallel for schedule(static)
+        if (count >= 16384) {
+#pragma omp parallel for simd
                 for (size_t i = 0; i < count; i++) {
                         result->data[i] = m.data[i] * scalar;
                 }
         } else
 #endif
         {
+                const double *M = m.data;
+                double *R       = result->data;
+                #pragma GCC ivdep
                 for (size_t i = 0; i < count; i++) {
-                        result->data[i] = m.data[i] * scalar;
+                        R[i] = M[i] * scalar;
                 }
         }
 
