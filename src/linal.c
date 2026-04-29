@@ -175,32 +175,49 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
         /* Zero-initialize result matrix first */
         memset(result->data, 0, result->rows * result->cols * sizeof(double));
 
-        /* O3 matmul: OpenMP + row blocking (TILE=4) + 8x unroll j */
-#pragma omp parallel for schedule(static)
-        for (size_t ii = 0; ii < a.rows; ii += 4) {
-                size_t i_end = (ii + 4 < a.rows) ? ii + 4 : a.rows;
-                for (size_t i = ii; i < i_end; i++) {
-                for (size_t k = 0; k < a.cols; k++) {
-                        double factor = a.data[i * a.cols + k];
-                        const double *b_row = b.data + k * b.cols;
+        /* O3 matmul: parallel for large matrices, serial for small ones */
+        if (a.rows <= 16) {
+                /* Serial version: avoids OpenMP thread overhead for tiny matrices */
+                for (size_t i = 0; i < a.rows; i++) {
                         double *r_row = result->data + i * result->cols;
-                        size_t j = 0;
-                        /* Unroll 8x: process 8 elements per iteration */
-                        for (; j + 7 < b.cols; j += 8) {
-                                r_row[j]     += factor * b_row[j];
-                                r_row[j + 1] += factor * b_row[j + 1];
-                                r_row[j + 2] += factor * b_row[j + 2];
-                                r_row[j + 3] += factor * b_row[j + 3];
-                                r_row[j + 4] += factor * b_row[j + 4];
-                                r_row[j + 5] += factor * b_row[j + 5];
-                                r_row[j + 6] += factor * b_row[j + 6];
-                                r_row[j + 7] += factor * b_row[j + 7];
-                        }
-                        /* Tail */
-                        for (; j < b.cols; j++) {
-                                r_row[j] += factor * b_row[j];
+                        for (size_t k = 0; k < a.cols; k++) {
+                                double factor = a.data[i * a.cols + k];
+                                const double *b_row = b.data + k * b.cols;
+                                size_t j = 0;
+                                for (; j + 3 < b.cols; j += 4) {
+                                        r_row[j]     += factor * b_row[j];
+                                        r_row[j + 1] += factor * b_row[j + 1];
+                                        r_row[j + 2] += factor * b_row[j + 2];
+                                        r_row[j + 3] += factor * b_row[j + 3];
+                                }
+                                for (; j < b.cols; j++) {
+                                        r_row[j] += factor * b_row[j];
+                                }
                         }
                 }
+        } else {
+                /* Parallel version: OpenMP on i-loop with 8x unroll */
+#pragma omp parallel for schedule(static)
+                for (size_t i = 0; i < a.rows; i++) {
+                        double *r_row = result->data + i * result->cols;
+                        for (size_t k = 0; k < a.cols; k++) {
+                                double factor = a.data[i * a.cols + k];
+                                const double *b_row = b.data + k * b.cols;
+                                size_t j = 0;
+                                for (; j + 7 < b.cols; j += 8) {
+                                        r_row[j]     += factor * b_row[j];
+                                        r_row[j + 1] += factor * b_row[j + 1];
+                                        r_row[j + 2] += factor * b_row[j + 2];
+                                        r_row[j + 3] += factor * b_row[j + 3];
+                                        r_row[j + 4] += factor * b_row[j + 4];
+                                        r_row[j + 5] += factor * b_row[j + 5];
+                                        r_row[j + 6] += factor * b_row[j + 6];
+                                        r_row[j + 7] += factor * b_row[j + 7];
+                                }
+                                for (; j < b.cols; j++) {
+                                        r_row[j] += factor * b_row[j];
+                                }
+                        }
                 }
         }
 
