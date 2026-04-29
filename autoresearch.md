@@ -64,8 +64,22 @@ The script compiles the benchmark + library with current compiler flags, runs it
 ```c
 __attribute__((optimize("O3")))
 int mat_mul(const Matrix a, const Matrix b, Matrix *result) {
-    // Serial: rows <= 16 (avoids OpenMP overhead)
-    // Parallel: rows > 16 with #pragma omp parallel for + 8x unroll j-loop
+    if (a.rows <= 16) {
+        // Serial path: 8x unroll, #pragma GCC ivdep
+    } else {
+        #pragma omp parallel for schedule(static)
+        #pragma GCC ivdep on innermost loop
+        // Parallel path: 8x unroll
+    }
 }
 ```
-Build requires `-fopenmp` flag. Total improvement: **-94% from original baseline** (18,789 → ~1,100 µS median).
+Build flags: `-fopenmp -ffp-contract=fast -march=native`.
+Total improvement: **-94.1% from original baseline** (18,789 → ~1,102 µS median).
+
+### Resumed Session Additions (post-compaction)
+- **FMA contraction (`-ffp-contract=fast`)**: -2% additional — fused multiply-add instructions
+- **#pragma GCC ivdep**: helps compiler vectorize inner loops by hinting independence  
+- **Serial path unroll 4x→8x**: marginal +1% — consistency with parallel path
+- **OpenMP scheduling tested**: static > dynamic(4) > guided(4)
+- **Threshold tuning**: 16 optimal (8 too low, 32 too high for benchmark sizes)
+- **Measurement variance warning**: results can vary 5-7x due to CPU thermal throttling on shared systems; run benchmarks after system cools down
