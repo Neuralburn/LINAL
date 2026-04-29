@@ -606,6 +606,9 @@ mat_trace(const Matrix *A)
                 t[5] += diag[(i + 5) * stride + (i + 5)];
                 t[6] += diag[(i + 6) * stride + (i + 6)];
                 t[7] += diag[(i + 7) * stride + (i + 7)];
+                /* Prefetch every 4 iterations to overlap latency */
+                if ((i >> 3) & 1)
+                        __builtin_prefetch(&diag[(i + 8) * stride + (i + 8)], 0, 1);
         }
         for (; i < n; i++) {
                 t[0] += diag[i * stride + i];
