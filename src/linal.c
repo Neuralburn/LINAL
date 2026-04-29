@@ -579,15 +579,23 @@ mat_trace(const Matrix *A)
                 return NAN;
         }
         size_t n = (A->rows < A->cols) ? A->rows : A->cols;
+#if defined(_OPENMP)
+        if (n >= 65536) {
+                /* Parallel reduction for very large matrices */
+                double sum = 0.0;
+#pragma omp parallel for simd reduction(+:sum)
+                for (size_t i = 0; i < n; i++) {
+                        sum += A->data[i * A->cols + i];
+                }
+                return sum;
+        }
+#endif
         /* Use 8 accumulators to break dependency chain and enable more ILP */
         double t0 = 0.0, t1 = 0.0, t2 = 0.0, t3 = 0.0;
         double t4 = 0.0, t5 = 0.0, t6 = 0.0, t7 = 0.0;
         const double *__restrict__ diag = A->data;
         size_t stride = A->cols;
         size_t i;
-        /* Hint that diag is 32-byte aligned for optimal AVX loads */
-        diag = (const double *__restrict__)
-            __builtin_assume_aligned(diag, 32);
         #pragma GCC ivdep
         for (i = 0; i + 7 < n; i += 8) {
                 t0 += diag[i * stride + i];
