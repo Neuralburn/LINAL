@@ -161,6 +161,7 @@ mat_add(const Matrix a, const Matrix b, Matrix *result)
  * @brief Perform matrix multiplication: C = A * B
  * Optimizes loop ordering for cache locality during computation.
  */
+__attribute__((optimize("O3")))
 int
 mat_mul(const Matrix a, const Matrix b, Matrix *result)
 {
