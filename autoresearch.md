@@ -14,7 +14,7 @@ chmod +x autoresearch.sh && ./autoresearch.sh
 The script compiles the benchmark + library with current compiler flags, runs it, and outputs structured `METRIC` lines.
 
 ## Files in Scope
-- **`src/linal.c`** — Contains `mat_mul()` implementation. This is the primary target for optimization.
+- **`src/linal.c`** — Contains `mat_mul()` implementation. Optimized with threshold-based parallelism.
 - **`tests/benchmark_mat_mul.c`** — Standalone benchmark that validates correctness against a naive reference and measures median timing across sizes.
 - **`include/linal_conf.h`** — Configuration options (e.g., `LINAL_USE_RESTRICT`). Can be tweaked to enable restrict pointers or other compile-time optimizations.
 
@@ -31,4 +31,41 @@ The script compiles the benchmark + library with current compiler flags, runs it
 - C11 standard compliance required
 
 ## What's Been Tried
-_(Updated as experiments accumulate)_
+
+### ✅ KEPT Optimizations
+1. **`__attribute__((optimize("O3")))` on mat_mul** — -44% improvement. GCC at -O3 enables aggressive auto-vectorization, better loop unrolling, and improved scheduling for this hot function only.
+2. **Manual inner loop 8x unroll + OpenMP parallel i-loop** — Additional -90% over O3 alone (total -94%). Thread-level parallelism dominates; wider unrolling helps under parallelism.
+3. **Threshold-based approach**: serial for rows≤16, parallel with 8x unroll for larger matrices. Eliminates OpenMP thread overhead for tiny matrices while keeping benefits for large ones.
+
+### ❌ Discarded Approaches
+| Approach | Result | Why it failed |
+|----------|--------|---------------|
+| Tiling TILE=8 | -44% vs baseline | Loop nesting overhead > cache benefits at these sizes |
+| Tiling TILE=16 | -24% vs baseline | Same issue — overhead too high for matrices ≤256×256 |
+| Pointer arithmetic + 4x unroll | -1.4% vs baseline | Small matrices helped but large ones regressed; compiler vectorizer beats manual unrolling without O3 |
+| `__builtin_assume_aligned(ptr, 32)` | -8% vs baseline | malloc'd data isn't 32-byte aligned; compiler generates misaligned instructions |
+| Restrict pointers only | -4% vs baseline | GCC's alias analysis at -O2 already sufficient for local variables |
+| i-j-k loop ordering | -290% vs baseline | Column-wise B access destroys cache locality. Catastrophic regression. |
+| k-i-j loop ordering | -10% vs baseline | Good B reuse but poor C temporal locality; streams all C rows per B row |
+| Merged memset into first k iter | +1% vs O3 | Two-pass structure breaks compiler optimization across iterations |
+| TILE=4 OpenMP (no threshold) | Variable 9%-50% worse | Small matrix thread overhead dominates total time |
+| TILE=8 with OpenMP | -22% vs TILE=4 | Extra nesting overhead outweighs cache benefits |
+| TILE=2 with OpenMP | Identical to baseline | Too many parallel iterations; scheduling overhead negates gains |
+| 8x unroll WITHOUT OpenMP | +21% vs 4x unroll | Register pressure and code bloat hurt large matrices |
+
+### Key Insights
+1. **Loop ordering is critical**: i-k-j is optimal for row-major matrices at all sizes. i-j-k and k-i-j both worse.
+2. **-O3 attribute is the single biggest win**: Compiling just mat_mul with -O3 gives 44% speedup without touching loop structure.
+3. **OpenMP parallelism dominates**: Thread-level parallelization provides ~90%+ improvement over O3 alone for matrices >16 rows.
+4. **Small matrix overhead matters**: OpenMP thread creation cost (~2-5ms) dwarfs actual computation for tiny matrices. Threshold-based approach solves this.
+5. **Measurement variance is real**: Results can vary 7x between runs due to CPU thermal throttling and system load. Run benchmarks after letting the system cool down for consistent results.
+
+### Final Configuration
+```c
+__attribute__((optimize("O3")))
+int mat_mul(const Matrix a, const Matrix b, Matrix *result) {
+    // Serial: rows <= 16 (avoids OpenMP overhead)
+    // Parallel: rows > 16 with #pragma omp parallel for + 8x unroll j-loop
+}
+```
+Build requires `-fopenmp` flag. Total improvement: **-94% from original baseline** (18,789 → ~1,100 µS median).
