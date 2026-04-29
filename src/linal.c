@@ -129,6 +129,11 @@ mat_copy(const Matrix src, Matrix *dest)
                 return -1;
         }
 
+        /* Reject aliasing: dest must not share storage with src. */
+        if (dest->data == src.data) {
+                return -1;
+        }
+
         size_t num_elements = src.rows * src.cols;
         memcpy(dest->data, src.data, num_elements * sizeof(double));
         return 0;
@@ -150,6 +155,13 @@ mat_add(const Matrix a, const Matrix b, Matrix *result)
                 fprintf(
                     stderr,
                     "Addition error: Invalid matrix or dimension mismatch\n");
+                return -1;
+        }
+
+        /* Reject aliasing: result must not share storage with a or b. */
+        if (result->data == a.data || result->data == b.data) {
+                fprintf(stderr,
+                        "Addition error: result aliases input operand\n");
                 return -1;
         }
 
@@ -190,6 +202,13 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
             || a.cols == 0 || b.rows == 0 || b.cols == 0 || a.cols != b.rows) {
                 fprintf(stderr, "Multiplication error: Invalid matrix or "
                                 "dimension mismatch\n");
+                return -1;
+        }
+
+        /* Reject aliasing: result must not share storage with a or b. */
+        if (result->data == a.data || result->data == b.data) {
+                fprintf(stderr, "Multiplication error: result aliases input "
+                                "operand\n");
                 return -1;
         }
 
@@ -273,6 +292,12 @@ mat_scale(const Matrix m, double scalar, Matrix *result)
                 return -1;
         }
 
+        /* Reject aliasing: result must not share storage with input. */
+        if (result->data == m.data) {
+                fprintf(stderr, "Scale error: result aliases input\n");
+                return -1;
+        }
+
         size_t count = m.rows * m.cols;
 #if defined(_OPENMP)
         if (count >= 16384) {
@@ -317,6 +342,12 @@ mat_transpose(const Matrix m, Matrix *result)
                         "Transpose error: Dimension mismatch (expected %zu x "
                         "%zu, got %zu x %zu)\n",
                         m.cols, m.rows, result->rows, result->cols);
+                return -1;
+        }
+
+        /* Reject aliasing: result must not share storage with input. */
+        if (result->data == m.data) {
+                fprintf(stderr, "Transpose error: result aliases input\n");
                 return -1;
         }
 
@@ -393,6 +424,13 @@ mat_sub(const Matrix a, const Matrix b, Matrix *result)
             || a.cols != result->cols) {
                 fprintf(stderr, "Subtraction error: Invalid matrix or "
                                 "dimension mismatch\n");
+                return -1;
+        }
+
+        /* Reject aliasing: result must not share storage with a or b. */
+        if (result->data == a.data || result->data == b.data) {
+                fprintf(stderr,
+                        "Subtraction error: result aliases input operand\n");
                 return -1;
         }
 
@@ -688,6 +726,12 @@ mat_inv(const Matrix A, Matrix *result)
 
         if (A.rows != result->rows || A.cols != result->cols) {
                 fprintf(stderr, "mat_inv: Result dimension mismatch\n");
+                return -1;
+        }
+
+        /* Reject aliasing: result must not share storage with input. */
+        if (result->data == A.data) {
+                fprintf(stderr, "mat_inv: result aliases input\n");
                 return -1;
         }
 

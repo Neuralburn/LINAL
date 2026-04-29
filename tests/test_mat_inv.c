@@ -411,6 +411,76 @@ TEST_CASE(test_inv_large_matrix)
         mat_free(&inv);
 }
 
+/* ---------- Aliasing rejection ----------------------------------------- */
+
+TEST_CASE(test_inv_alias_rejected)
+{
+        Matrix A = mat_create(2, 2);
+        A.data[0] = 4.0; A.data[1] = 7.0;
+        A.data[2] = 2.0; A.data[3] = 6.0;
+
+        Matrix aliased = {.rows = 2, .cols = 2, .data = A.data};
+        TEST_ASSERT(mat_inv(A, &aliased) == -1);
+        /* A unchanged. */
+        TEST_ASSERT(approx_equal(A.data[0], 4.0));
+        TEST_ASSERT(approx_equal(A.data[3], 6.0));
+        mat_free(&A);
+}
+
+/* ---------- Cross-op invariants ---------------------------------------- */
+
+/* (AB)^-1 == B^-1 A^-1 for invertible A,B. */
+TEST_CASE(test_inv_product_rule)
+{
+        Matrix A = mat_create(3, 3);
+        Matrix B = mat_create(3, 3);
+        /* Two diagonally-dominant invertible matrices. */
+        init_matrix(&A, 3, 3,
+                    (double[]){5.0, 1.0, 0.0, 0.0, 4.0, -1.0, 1.0, 0.0, 3.0});
+        init_matrix(&B, 3, 3,
+                    (double[]){2.0, 0.0, 1.0, 0.0, 3.0, 0.0, -1.0, 0.0, 4.0});
+
+        Matrix AB = mat_create(3, 3);
+        Matrix invAB = mat_create(3, 3);
+        Matrix invA = mat_create(3, 3);
+        Matrix invB = mat_create(3, 3);
+        Matrix invB_invA = mat_create(3, 3);
+
+        TEST_ASSERT(mat_mul(A, B, &AB) == 0);
+        TEST_ASSERT(mat_inv(AB, &invAB) == 0);
+        TEST_ASSERT(mat_inv(A, &invA) == 0);
+        TEST_ASSERT(mat_inv(B, &invB) == 0);
+        TEST_ASSERT(mat_mul(invB, invA, &invB_invA) == 0);
+
+        TEST_ASSERT(mat_relative_equal(invAB, invB_invA,
+                                        DEFAULT_RTOL, DEFAULT_ATOL) == 0);
+
+        mat_free(&A); mat_free(&B);
+        mat_free(&AB); mat_free(&invAB);
+        mat_free(&invA); mat_free(&invB);
+        mat_free(&invB_invA);
+}
+
+/* det(A^-1) == 1/det(A). */
+TEST_CASE(test_inv_det_reciprocal)
+{
+        Matrix A = mat_create(3, 3);
+        init_matrix(&A, 3, 3,
+                    (double[]){6.0, 1.0, 1.0,
+                               4.0, -2.0, 5.0,
+                               2.0, 8.0, 7.0});
+
+        Matrix invA = mat_create(3, 3);
+        TEST_ASSERT(mat_inv(A, &invA) == 0);
+
+        double dA = mat_det(&A);
+        double dInv = mat_det(&invA);
+        TEST_ASSERT(rel_equal(dA * dInv, 1.0, DEFAULT_RTOL, DEFAULT_ATOL));
+
+        mat_free(&A);
+        mat_free(&invA);
+}
+
 int
 main(void)
 {
@@ -439,6 +509,10 @@ main(void)
         run_test(test_inv_4x4, "test_inv_4x4");
         run_test(test_inv_4x4_non_singular, "test_inv_4x4_non_singular");
         run_test(test_inv_large_matrix, "test_inv_large_matrix");
+
+        run_test(test_inv_alias_rejected, "test_inv_alias_rejected");
+        run_test(test_inv_product_rule, "test_inv_product_rule");
+        run_test(test_inv_det_reciprocal, "test_inv_det_reciprocal");
 
         fprintf(stdout, "\n=== All mat_inv tests passed ===\n\n");
         return EXIT_SUCCESS;

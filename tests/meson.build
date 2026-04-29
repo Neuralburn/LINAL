@@ -90,9 +90,37 @@ test_mat_inv = executable(
   include_directories: [public_headers, generated_headers],
 )
 
+test_mat_copy = executable(
+  'test_mat_copy',
+  files('test_mat_copy.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+
 test_stress = executable(
   'test_stress',
   files('test_stress.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+
+test_property = executable(
+  'test_property',
+  files('test_property.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+
+test_workloads = executable(
+  'test_workloads',
+  files('test_workloads.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+
+test_numerics = executable(
+  'test_numerics',
+  files('test_numerics.c'),
   dependencies: [linal_dep],
   include_directories: [public_headers, generated_headers],
 )
@@ -111,4 +139,8 @@ test('mat_trace', test_mat_trace)
 test('mat_dot', test_mat_dot)
 test('mat_det', test_mat_det)
 test('mat_inv', test_mat_inv)
+test('mat_copy', test_mat_copy)
 test('stress', test_stress)
+test('property', test_property)
+test('workloads', test_workloads, timeout: 120)
+test('numerics', test_numerics)

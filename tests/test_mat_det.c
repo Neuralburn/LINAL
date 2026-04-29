@@ -128,6 +128,85 @@ TEST_CASE(test_det_large_matrix)
         mat_free(&I);
 }
 
+/* det(A^T) == det(A). */
+TEST_CASE(test_det_transpose_invariant)
+{
+        Matrix A = mat_create(3, 3);
+        init_matrix(&A, 3, 3,
+                    (double[]){6.0, 1.0, 1.0, 4.0, -2.0, 5.0, 2.0, 8.0, 7.0});
+
+        Matrix AT = mat_create(3, 3);
+        TEST_ASSERT(mat_transpose(A, &AT) == 0);
+        double dA = mat_det(&A);
+        double dAT = mat_det(&AT);
+        TEST_ASSERT(rel_equal(dA, dAT, DEFAULT_RTOL, DEFAULT_ATOL));
+
+        mat_free(&A);
+        mat_free(&AT);
+}
+
+/* det(AB) == det(A) * det(B). */
+TEST_CASE(test_det_product_rule)
+{
+        Matrix A = mat_create(3, 3);
+        Matrix B = mat_create(3, 3);
+        init_matrix(&A, 3, 3,
+                    (double[]){2.0, -1.0, 0.0, -1.0, 2.0, -1.0, 0.0, -1.0, 2.0});
+        init_matrix(&B, 3, 3,
+                    (double[]){1.0, 2.0, 0.0, 0.0, 1.0, 2.0, 2.0, 0.0, 1.0});
+
+        Matrix AB = mat_create(3, 3);
+        TEST_ASSERT(mat_mul(A, B, &AB) == 0);
+
+        double dA = mat_det(&A);
+        double dB = mat_det(&B);
+        double dAB = mat_det(&AB);
+        TEST_ASSERT(rel_equal(dAB, dA * dB, DEFAULT_RTOL, DEFAULT_ATOL));
+
+        mat_free(&A);
+        mat_free(&B);
+        mat_free(&AB);
+}
+
+/* For triangular matrix det == product of diagonal. */
+TEST_CASE(test_det_upper_triangular)
+{
+        size_t n = 5;
+        Matrix U = mat_create(n, n);
+        double diag[5] = {2.0, -3.0, 4.0, 1.5, -1.0};
+        double expected = 1.0;
+        for (size_t i = 0; i < n; i++) {
+                expected *= diag[i];
+                U.data[i * n + i] = diag[i];
+                /* Fill upper-triangle with non-zero junk. */
+                for (size_t j = i + 1; j < n; j++) {
+                        U.data[i * n + j] = (double)(i + j) * 0.5;
+                }
+        }
+        double det = mat_det(&U);
+        TEST_ASSERT(rel_equal(det, expected, DEFAULT_RTOL, DEFAULT_ATOL));
+        mat_free(&U);
+}
+
+/* det(alpha * A) == alpha^n * det(A). */
+TEST_CASE(test_det_scaling_rule)
+{
+        size_t n = 3;
+        Matrix A = mat_create(n, n);
+        init_matrix(&A, n, n,
+                    (double[]){6.0, 1.0, 1.0, 4.0, -2.0, 5.0, 2.0, 8.0, 7.0});
+        Matrix sA = mat_create(n, n);
+        double alpha = 2.5;
+        TEST_ASSERT(mat_scale(A, alpha, &sA) == 0);
+
+        double dA = mat_det(&A);
+        double dsA = mat_det(&sA);
+        TEST_ASSERT(rel_equal(dsA, pow(alpha, (double)n) * dA,
+                              DEFAULT_RTOL, DEFAULT_ATOL));
+        mat_free(&A);
+        mat_free(&sA);
+}
+
 int
 main(void)
 {
@@ -145,6 +224,12 @@ main(void)
         run_test(test_det_null_matrix, "test_det_null_matrix");
         run_test(test_det_null_data, "test_det_null_data");
         run_test(test_det_large_matrix, "test_det_large_matrix");
+
+        run_test(test_det_transpose_invariant,
+                 "test_det_transpose_invariant");
+        run_test(test_det_product_rule, "test_det_product_rule");
+        run_test(test_det_upper_triangular, "test_det_upper_triangular");
+        run_test(test_det_scaling_rule, "test_det_scaling_rule");
 
         fprintf(stdout, "\n=== All mat_det tests passed ===\n\n");
         return EXIT_SUCCESS;
