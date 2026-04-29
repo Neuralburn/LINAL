@@ -1,0 +1,1 @@
+{"type":"config","name":"Optimizing mat_mul runtime performance for LINAL linear algebra library","metricName":"mat_mul_total_µs","metricUnit":"µs","bestDirection":"lower"}
