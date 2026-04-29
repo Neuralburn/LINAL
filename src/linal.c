@@ -314,11 +314,13 @@ mat_transpose(const Matrix m, Matrix *result)
 
 /**
  * @brief Subtract two matrices element-wise (A - B).
+ * Optimized with loop unrolling (8x) and SIMD hints for better throughput.
  * @param a First operand (minuend)
  * @param b Second operand (subtrahend)
  * @param result Output matrix containing the difference (must not alias a or b)
  * @return 0 on success, -1 on dimension mismatch or invalid result
  */
+__attribute__((optimize("O3")))
 int
 mat_sub(const Matrix a, const Matrix b, Matrix *result)
 {
@@ -331,7 +333,9 @@ mat_sub(const Matrix a, const Matrix b, Matrix *result)
         }
 
         size_t count = a.rows * a.cols;
+
 #if defined(_OPENMP)
+        /* Parallelize only for large matrices to avoid thread overhead */
         if (count >= 1024) {
 #pragma omp parallel for schedule(static)
                 for (size_t i = 0; i < count; i++) {
@@ -340,8 +344,24 @@ mat_sub(const Matrix a, const Matrix b, Matrix *result)
         } else
 #endif
         {
-                for (size_t i = 0; i < count; i++) {
-                        result->data[i] = a.data[i] - b.data[i];
+                /* 8x loop unrolling with SIMD hint for small-medium matrices */
+                const double *A = a.data;
+                const double *B = b.data;
+                double *R       = result->data;
+                size_t i        = 0;
+                #pragma GCC ivdep
+                for (; i + 7 < count; i += 8) {
+                        R[i]     = A[i] - B[i];
+                        R[i + 1] = A[i + 1] - B[i + 1];
+                        R[i + 2] = A[i + 2] - B[i + 2];
+                        R[i + 3] = A[i + 3] - B[i + 3];
+                        R[i + 4] = A[i + 4] - B[i + 4];
+                        R[i + 5] = A[i + 5] - B[i + 5];
+                        R[i + 6] = A[i + 6] - B[i + 6];
+                        R[i + 7] = A[i + 7] - B[i + 7];
+                }
+                for (; i < count; i++) {
+                        R[i] = A[i] - B[i];
                 }
         }
         return 0;
