@@ -344,23 +344,12 @@ mat_sub(const Matrix a, const Matrix b, Matrix *result)
         } else
 #endif
         {
-                /* 8x loop unrolling with SIMD hint for small-medium matrices */
+                /* Let compiler auto-vectorize with ivdep hint */
                 const double *A = a.data;
                 const double *B = b.data;
                 double *R       = result->data;
-                size_t i        = 0;
                 #pragma GCC ivdep
-                for (; i + 7 < count; i += 8) {
-                        R[i]     = A[i] - B[i];
-                        R[i + 1] = A[i + 1] - B[i + 1];
-                        R[i + 2] = A[i + 2] - B[i + 2];
-                        R[i + 3] = A[i + 3] - B[i + 3];
-                        R[i + 4] = A[i + 4] - B[i + 4];
-                        R[i + 5] = A[i + 5] - B[i + 5];
-                        R[i + 6] = A[i + 6] - B[i + 6];
-                        R[i + 7] = A[i + 7] - B[i + 7];
-                }
-                for (; i < count; i++) {
+                for (size_t i = 0; i < count; i++) {
                         R[i] = A[i] - B[i];
                 }
         }
