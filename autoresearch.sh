@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # Compiler flags — override with EXTRA_CFLAGS env var for autoresearch iterations
-CFLAGS="${EXTRA_CFLAGS:--O3 -march=native}"
+CFLAGS="${EXTRA_CFLAGS:--O3 -march=native -fopenmp}"
 
 echo "=== Building linal (CFLAGS=$CFLAGS) ==="
 meson setup build --wipe --buildtype=release \
@@ -16,7 +16,7 @@ echo "=== Compiling benchmark ==="
 gcc $CFLAGS \
   -I include -I build \
   tests/benchmark_mat_add.c \
-  -L build -llinal -lm \
+  -L build -llinal -lm -fopenmp \
   -o benchmark_mat_add
 
 # Run benchmark and capture output

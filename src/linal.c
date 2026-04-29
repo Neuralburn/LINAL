@@ -151,8 +151,20 @@ mat_add(const Matrix a, const Matrix b, Matrix *result)
         }
 
         size_t count = a.rows * a.cols;
-        for (size_t i = 0; i < count; i++) {
-                result->data[i] = a.data[i] + b.data[i];
+
+#if defined(_OPENMP)
+        /* Parallelize only for large matrices to avoid thread overhead */
+        if (count >= 1024) {
+#pragma omp parallel for schedule(static)
+                for (size_t i = 0; i < count; i++) {
+                        result->data[i] = a.data[i] + b.data[i];
+                }
+        } else
+#endif
+        {
+                for (size_t i = 0; i < count; i++) {
+                        result->data[i] = a.data[i] + b.data[i];
+                }
         }
         return 0;
 }

@@ -45,12 +45,13 @@ linal_lib = static_library(
 )
 
 math_lib = cc.find_library('m')
+gomp_lib = cc.find_library('gomp', required : false)
 
 linal_dep = declare_dependency(
   include_directories: [public_headers, generated_headers],
   link_with: linal_lib,
   sources: generated_version_header,
-  dependencies: math_lib,
+  dependencies: [math_lib, gomp_lib],
 )
 
 meson.override_dependency('linal', linal_dep)
