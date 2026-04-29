@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 # Quick syntax check — compile the benchmark
 CC="${CC:-gcc}"
-CFLAGS="${CFLAGS:--O2 -march=native}"
+CFLAGS="${CFLAGS:--O2 -march=native -fopenmp}"
 
 echo "=== Compiling with $CC $CFLAGS ==="
 $CC $CFLAGS \

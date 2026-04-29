@@ -175,7 +175,8 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
         /* Zero-initialize result matrix first */
         memset(result->data, 0, result->rows * result->cols * sizeof(double));
 
-        /* O3 matmul with manual inner loop unrolling (4x) */
+        /* O3 matmul: OpenMP parallelize i + 4x unroll j */
+#pragma omp parallel for schedule(static)
         for (size_t i = 0; i < a.rows; i++) {
                 for (size_t k = 0; k < a.cols; k++) {
                         double factor = a.data[i * a.cols + k];
