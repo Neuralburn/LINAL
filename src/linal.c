@@ -663,14 +663,14 @@ mat_inv(const Matrix A, Matrix *result)
 
                 // Eliminate column in all other rows
 #if defined(_OPENMP)
-                if (n >= 64) {
+                if (n >= 32) {
 #pragma omp parallel for schedule(static)
                         for (long idx = 0; idx < (long)n; idx++) {
                                 size_t i = (size_t)idx;
                                 if (i == col) continue;
                                 double factor = aug[i * stride + col];
                                 double *target_row = aug + i * stride;
-                                #pragma GCC ivdep
+                                #pragma omp simd
                                 for (size_t j = 0; j < stride; j++) {
                                         target_row[j] -=
                                             factor * pivot_row_ptr[j];
