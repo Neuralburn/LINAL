@@ -175,9 +175,11 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
         /* Zero-initialize result matrix first */
         memset(result->data, 0, result->rows * result->cols * sizeof(double));
 
-        /* O3 matmul: OpenMP parallelize i + 4x unroll j */
+        /* O3 matmul: OpenMP + row blocking (TILE=4) + 8x unroll j */
 #pragma omp parallel for schedule(static)
-        for (size_t i = 0; i < a.rows; i++) {
+        for (size_t ii = 0; ii < a.rows; ii += 4) {
+                size_t i_end = (ii + 4 < a.rows) ? ii + 4 : a.rows;
+                for (size_t i = ii; i < i_end; i++) {
                 for (size_t k = 0; k < a.cols; k++) {
                         double factor = a.data[i * a.cols + k];
                         const double *b_row = b.data + k * b.cols;
@@ -198,6 +200,7 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
                         for (; j < b.cols; j++) {
                                 r_row[j] += factor * b_row[j];
                         }
+                }
                 }
         }
 
