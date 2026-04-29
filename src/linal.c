@@ -314,7 +314,8 @@ mat_transpose(const Matrix m, Matrix *result)
 
 /**
  * @brief Subtract two matrices element-wise (A - B).
- * Optimized with loop unrolling (8x) and SIMD hints for better throughput.
+ * Uses auto-vectorization with ivdep hint for serial path and OpenMP simd
+ * parallelism for large matrices (≥4096 elements).
  * @param a First operand (minuend)
  * @param b Second operand (subtrahend)
  * @param result Output matrix containing the difference (must not alias a or b)
