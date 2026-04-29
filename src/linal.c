@@ -585,6 +585,9 @@ mat_trace(const Matrix *A)
         const double *__restrict__ diag = A->data;
         size_t stride = A->cols;
         size_t i;
+        /* Hint that diag is 32-byte aligned for optimal AVX loads */
+        diag = (const double *__restrict__)
+            __builtin_assume_aligned(diag, 32);
         #pragma GCC ivdep
         for (i = 0; i + 7 < n; i += 8) {
                 t0 += diag[i * stride + i];
