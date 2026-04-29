@@ -571,18 +571,50 @@ mat_norm_l2(const Matrix *A)
         return sqrt(sum);
 }
 
+__attribute__((optimize("O3")))
 double
 mat_trace(const Matrix *A)
 {
         if (!A || !A->data) {
                 return NAN;
         }
-        double trace = 0.0;
         size_t n = (A->rows < A->cols) ? A->rows : A->cols;
-        for (size_t i = 0; i < n; i++) {
-                trace += A->data[i * A->cols + i];
+#if defined(_OPENMP)
+        if (n >= 65536) {
+                /* Parallel reduction for very large matrices */
+                double sum = 0.0;
+#pragma omp parallel for simd reduction(+:sum)
+                for (size_t i = 0; i < n; i++) {
+                        sum += A->data[i * A->cols + i];
+                }
+                return sum;
         }
-        return trace;
+#endif
+        /* Use 8 accumulators with pairwise summation tree for ILP + precision */
+        double t[8];
+        const double *__restrict__ diag = A->data;
+        size_t stride = A->cols;
+        size_t i;
+        for (int k = 0; k < 8; k++) t[k] = 0.0;
+        #pragma GCC ivdep
+        for (i = 0; i + 7 < n; i += 8) {
+                t[0] += diag[i * stride + i];
+                t[1] += diag[(i + 1) * stride + (i + 1)];
+                t[2] += diag[(i + 2) * stride + (i + 2)];
+                t[3] += diag[(i + 3) * stride + (i + 3)];
+                t[4] += diag[(i + 4) * stride + (i + 4)];
+                t[5] += diag[(i + 5) * stride + (i + 5)];
+                t[6] += diag[(i + 6) * stride + (i + 6)];
+                t[7] += diag[(i + 7) * stride + (i + 7)];
+                /* Prefetch every 4 iterations to overlap latency */
+                if ((i >> 3) & 1)
+                        __builtin_prefetch(&diag[(i + 8) * stride + (i + 8)], 0, 1);
+        }
+        for (; i < n; i++) {
+                t[0] += diag[i * stride + i];
+        }
+        /* Pairwise summation tree */
+        return ((t[0]+t[1])+(t[2]+t[3]))+((t[4]+t[5])+(t[6]+t[7]));
 }
 
 double
