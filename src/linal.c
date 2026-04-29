@@ -204,6 +204,7 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
                                 double factor = a.data[i * a.cols + k];
                                 const double *b_row = b.data + k * b.cols;
                                 size_t j = 0;
+                                #pragma GCC ivdep
                                 for (; j + 7 < b.cols; j += 8) {
                                         r_row[j]     += factor * b_row[j];
                                         r_row[j + 1] += factor * b_row[j + 1];
