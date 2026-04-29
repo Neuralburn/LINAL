@@ -571,18 +571,30 @@ mat_norm_l2(const Matrix *A)
         return sqrt(sum);
 }
 
+__attribute__((optimize("O3")))
 double
 mat_trace(const Matrix *A)
 {
         if (!A || !A->data) {
                 return NAN;
         }
-        double trace = 0.0;
         size_t n = (A->rows < A->cols) ? A->rows : A->cols;
-        for (size_t i = 0; i < n; i++) {
-                trace += A->data[i * A->cols + i];
+        /* Use 4 accumulators to break dependency chain and enable ILP */
+        double t0 = 0.0, t1 = 0.0, t2 = 0.0, t3 = 0.0;
+        const double *diag = A->data;
+        size_t stride = A->cols;
+        size_t i = 0;
+        #pragma GCC ivdep
+        for (; i + 3 < n; i += 4) {
+                t0 += diag[i * stride + i];
+                t1 += diag[(i + 1) * stride + (i + 1)];
+                t2 += diag[(i + 2) * stride + (i + 2)];
+                t3 += diag[(i + 3) * stride + (i + 3)];
         }
-        return trace;
+        for (; i < n; i++) {
+                t0 += diag[i * stride + i];
+        }
+        return t0 + t1 + t2 + t3;
 }
 
 double
