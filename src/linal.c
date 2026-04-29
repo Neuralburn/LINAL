@@ -567,11 +567,17 @@ mat_dot(const Matrix A, const Matrix B)
  * 2. For each column, normalize pivot row and eliminate other rows
  * 3. Extract inverse from right half of augmented matrix
  *
+ * Optimizations:
+ * - memcpy for row initialization, swap, and extraction
+ * - #pragma GCC ivdep on inner loops for auto-vectorization (AVX2)
+ * - Split elimination loop to avoid branch per iteration
+ *
  * @param A The input square matrix (must be n × n and non-singular)
  * @param result Output matrix containing the inverse (must be pre-allocated
  * with same dimensions)
  * @return 0 on success, -1 if matrix is singular or not square
  */
+__attribute__((optimize("O3")))
 int
 mat_inv(const Matrix A, Matrix *result)
 {
@@ -591,30 +597,29 @@ mat_inv(const Matrix A, Matrix *result)
         }
 
         size_t n = A.rows;
+        size_t stride = 2 * n;
 
         // Create augmented matrix [A | I]
-        double *aug = (double *)malloc(n * (2 * n) * sizeof(double));
+        double *aug = (double *)malloc(n * stride * sizeof(double));
         if (!aug) {
                 fprintf(stderr, "mat_inv: Memory allocation failed\n");
                 return -1;
         }
 
-        // Initialize augmented matrix: left side = A, right side = I
+        // Initialize: copy A into left half, set identity in right half
         for (size_t i = 0; i < n; i++) {
-                for (size_t j = 0; j < n; j++) {
-                        aug[i * (2 * n) + j] = A.data[i * n + j]; // Left: A
-                        aug[i * (2 * n) + n + j] =
-                            (i == j) ? 1.0 : 0.0; // Right: I
-                }
+                memcpy(aug + i * stride, A.data + i * n, n * sizeof(double));
+                memset(aug + i * stride + n, 0, n * sizeof(double));
+                aug[i * stride + n + i] = 1.0;
         }
 
         // Gauss-Jordan elimination
         for (size_t col = 0; col < n; col++) {
                 // Find pivot (largest absolute value in column)
                 size_t pivot_row = col;
-                double max_val = fabs(aug[col * (2 * n) + col]);
+                double max_val = fabs(aug[col * stride + col]);
                 for (size_t i = col + 1; i < n; i++) {
-                        double val = fabs(aug[i * (2 * n) + col]);
+                        double val = fabs(aug[i * stride + col]);
                         if (val > max_val) {
                                 max_val = val;
                                 pivot_row = i;
@@ -629,39 +634,60 @@ mat_inv(const Matrix A, Matrix *result)
                         return -1;
                 }
 
-                // Swap rows if needed
+                // Swap rows if needed — use memcpy-based 3-way swap
                 if (pivot_row != col) {
-                        for (size_t j = 0; j < 2 * n; j++) {
-                                double temp = aug[col * (2 * n) + j];
-                                aug[col * (2 * n) + j] =
-                                    aug[pivot_row * (2 * n) + j];
-                                aug[pivot_row * (2 * n) + j] = temp;
+                        double *row_a = aug + col * stride;
+                        double *row_b = aug + pivot_row * stride;
+                        double tmp_buf[64];
+                        size_t swap_bytes = stride * sizeof(double);
+                        if (swap_bytes <= sizeof(tmp_buf)) {
+                                memcpy(tmp_buf, row_a, swap_bytes);
+                                memcpy(row_a, row_b, swap_bytes);
+                                memcpy(row_b, tmp_buf, swap_bytes);
+                        } else {
+                                double *tmp = (double *)malloc(swap_bytes);
+                                memcpy(tmp, row_a, swap_bytes);
+                                memcpy(row_a, row_b, swap_bytes);
+                                memcpy(row_b, tmp, swap_bytes);
+                                free(tmp);
                         }
                 }
 
-                // Normalize pivot row
-                double pivot = aug[col * (2 * n) + col];
-                for (size_t j = 0; j < 2 * n; j++) {
-                        aug[col * (2 * n) + j] /= pivot;
+                // Normalize pivot row — auto-vectorizable with ivdep
+                double *pivot_row_ptr = aug + col * stride;
+                double inv_pivot = 1.0 / pivot_row_ptr[col];
+                #pragma GCC ivdep
+                for (size_t j = 0; j < stride; j++) {
+                        pivot_row_ptr[j] *= inv_pivot;
                 }
 
                 // Eliminate column in all other rows
-                for (size_t i = 0; i < n; i++) {
-                        if (i != col) {
-                                double factor = aug[i * (2 * n) + col];
-                                for (size_t j = 0; j < 2 * n; j++) {
-                                        aug[i * (2 * n) + j] -=
-                                            factor * aug[col * (2 * n) + j];
-                                }
+                // Split into two loops to avoid branch per iteration:
+                // rows before col, then rows after col
+                for (size_t i = 0; i < col; i++) {
+                        double factor = aug[i * stride + col];
+                        double *target_row = aug + i * stride;
+                        #pragma GCC ivdep
+                        for (size_t j = 0; j < stride; j++) {
+                                target_row[j] -=
+                                    factor * pivot_row_ptr[j];
+                        }
+                }
+                for (size_t i = col + 1; i < n; i++) {
+                        double factor = aug[i * stride + col];
+                        double *target_row = aug + i * stride;
+                        #pragma GCC ivdep
+                        for (size_t j = 0; j < stride; j++) {
+                                target_row[j] -=
+                                    factor * pivot_row_ptr[j];
                         }
                 }
         }
 
-        // Extract inverse from right half of augmented matrix
+        // Extract inverse from right half — use memcpy per row
         for (size_t i = 0; i < n; i++) {
-                for (size_t j = 0; j < n; j++) {
-                        result->data[i * n + j] = aug[i * (2 * n) + n + j];
-                }
+                memcpy(result->data + i * n, aug + i * stride + n,
+                       n * sizeof(double));
         }
 
         free(aug);
