@@ -335,9 +335,10 @@ mat_sub(const Matrix a, const Matrix b, Matrix *result)
         size_t count = a.rows * a.cols;
 
 #if defined(_OPENMP)
-        /* Parallelize only for large matrices to avoid thread overhead */
-        if (count >= 1024) {
-#pragma omp parallel for schedule(static)
+        /* Parallelize only for large matrices to avoid thread overhead.
+         * Threshold of 4096 elements (~64×64) ensures threads have enough work. */
+        if (count >= 4096) {
+#pragma omp parallel for simd
                 for (size_t i = 0; i < count; i++) {
                         result->data[i] = a.data[i] - b.data[i];
                 }
