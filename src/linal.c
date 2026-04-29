@@ -507,12 +507,29 @@ mat_norm_l2(const Matrix *A)
                 return NAN;
         }
         double sum = 0.0;
-        for (size_t i = 0; i < A->rows; i++) {
-                for (size_t j = 0; j < A->cols; j++) {
-                        double val = A->data[i * A->cols + j];
+        size_t count = A->rows * A->cols;
+
+#if defined(_OPENMP)
+        if (count >= 4096) {
+#pragma omp parallel for simd reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        double val = A->data[i];
+                        sum += val * val;
+                }
+        } else {
+#pragma omp simd reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        double val = A->data[i];
                         sum += val * val;
                 }
         }
+#else
+#pragma GCC ivdep
+        for (size_t i = 0; i < count; i++) {
+                double val = A->data[i];
+                sum += val * val;
+        }
+#endif
         return sqrt(sum);
 }
 
@@ -616,7 +633,7 @@ mat_dot(const Matrix A, const Matrix B)
         size_t count = A.rows * A.cols;
 
 #if defined(_OPENMP)
-        if (count >= 4096) {
+        if (count >= 65536) {
 #pragma omp parallel for simd reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
                         sum += A.data[i] * B.data[i];
