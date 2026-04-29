@@ -56,3 +56,11 @@ docs/_static/
 
 # Linter caches
 .ruff_cache/
+
+# Autoresearch session artifacts (run-specific, not project code)
+.autoresearch/
+autoresearch.ideas.md
+autoresearch.checks.sh
+autoresearch.config.json
+autoresearch.jsonl
+autoresearch.md
