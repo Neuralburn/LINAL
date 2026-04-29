@@ -175,13 +175,23 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
         /* Zero-initialize result matrix first */
         memset(result->data, 0, result->rows * result->cols * sizeof(double));
 
-        /* Compute C[i][j] = sum_k(A[i][k] * B[k][j]) */
+        /* O3 matmul with manual inner loop unrolling (4x) */
         for (size_t i = 0; i < a.rows; i++) {
                 for (size_t k = 0; k < a.cols; k++) {
                         double factor = a.data[i * a.cols + k];
-                        for (size_t j = 0; j < b.cols; j++) {
-                                result->data[i * result->cols + j] +=
-                                    factor * b.data[k * b.cols + j];
+                        const double *b_row = b.data + k * b.cols;
+                        double *r_row = result->data + i * result->cols;
+                        size_t j = 0;
+                        /* Unroll 4x: process 4 elements per iteration */
+                        for (; j + 3 < b.cols; j += 4) {
+                                r_row[j]     += factor * b_row[j];
+                                r_row[j + 1] += factor * b_row[j + 1];
+                                r_row[j + 2] += factor * b_row[j + 2];
+                                r_row[j + 3] += factor * b_row[j + 3];
+                        }
+                        /* Tail */
+                        for (; j < b.cols; j++) {
+                                r_row[j] += factor * b_row[j];
                         }
                 }
         }
