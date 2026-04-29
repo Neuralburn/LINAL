@@ -590,27 +590,28 @@ mat_trace(const Matrix *A)
                 return sum;
         }
 #endif
-        /* Use 8 accumulators to break dependency chain and enable more ILP */
-        double t0 = 0.0, t1 = 0.0, t2 = 0.0, t3 = 0.0;
-        double t4 = 0.0, t5 = 0.0, t6 = 0.0, t7 = 0.0;
+        /* Use 8 accumulators with pairwise summation tree for ILP + precision */
+        double t[8];
         const double *__restrict__ diag = A->data;
         size_t stride = A->cols;
         size_t i;
+        for (int k = 0; k < 8; k++) t[k] = 0.0;
         #pragma GCC ivdep
         for (i = 0; i + 7 < n; i += 8) {
-                t0 += diag[i * stride + i];
-                t1 += diag[(i + 1) * stride + (i + 1)];
-                t2 += diag[(i + 2) * stride + (i + 2)];
-                t3 += diag[(i + 3) * stride + (i + 3)];
-                t4 += diag[(i + 4) * stride + (i + 4)];
-                t5 += diag[(i + 5) * stride + (i + 5)];
-                t6 += diag[(i + 6) * stride + (i + 6)];
-                t7 += diag[(i + 7) * stride + (i + 7)];
+                t[0] += diag[i * stride + i];
+                t[1] += diag[(i + 1) * stride + (i + 1)];
+                t[2] += diag[(i + 2) * stride + (i + 2)];
+                t[3] += diag[(i + 3) * stride + (i + 3)];
+                t[4] += diag[(i + 4) * stride + (i + 4)];
+                t[5] += diag[(i + 5) * stride + (i + 5)];
+                t[6] += diag[(i + 6) * stride + (i + 6)];
+                t[7] += diag[(i + 7) * stride + (i + 7)];
         }
         for (; i < n; i++) {
-                t0 += diag[i * stride + i];
+                t[0] += diag[i * stride + i];
         }
-        return t0 + t1 + t2 + t3 + t4 + t5 + t6 + t7;
+        /* Pairwise summation tree */
+        return ((t[0]+t[1])+(t[2]+t[3]))+((t[4]+t[5])+(t[6]+t[7]));
 }
 
 double
