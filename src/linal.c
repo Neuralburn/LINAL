@@ -582,11 +582,11 @@ mat_trace(const Matrix *A)
         /* Use 8 accumulators to break dependency chain and enable more ILP */
         double t0 = 0.0, t1 = 0.0, t2 = 0.0, t3 = 0.0;
         double t4 = 0.0, t5 = 0.0, t6 = 0.0, t7 = 0.0;
-        const double *diag = A->data;
+        const double *__restrict__ diag = A->data;
         size_t stride = A->cols;
-        size_t i = 0;
+        size_t i;
         #pragma GCC ivdep
-        for (; i + 7 < n; i += 8) {
+        for (i = 0; i + 7 < n; i += 8) {
                 t0 += diag[i * stride + i];
                 t1 += diag[(i + 1) * stride + (i + 1)];
                 t2 += diag[(i + 2) * stride + (i + 2)];
