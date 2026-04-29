@@ -1,6 +1,6 @@
 /*
- * @file benchmark_mat_mul.c
- * @brief Benchmark mat_mul across matrix sizes with correctness validation.
+ * @file benchmark_mat_dot.c
+ * @brief Benchmark mat_dot across matrix sizes with correctness validation.
  */
 
 #include "linal.h"
@@ -12,10 +12,10 @@
 #include <time.h>
 
 #define REPEATS_SMALL 20
-#define REPEATS_LARGE 3
-#define EPSILON 1e-4
+#define REPEATS_LARGE 5
+#define EPSILON 1e-6
 
-static const size_t sizes[] = {8, 16, 32, 64, 128, 256, 512};
+static const size_t sizes[] = {8, 16, 32, 64, 128, 256, 512, 1024};
 static const int n_sizes = sizeof(sizes) / sizeof(sizes[0]);
 
 static void fill_matrix(Matrix *m, uint64_t seed)
@@ -39,7 +39,7 @@ int main(void)
     int fail_count = 0;
     double primary_ms = 0.0;
 
-    printf("=== mat_mul benchmark ===\n");
+    printf("=== mat_dot benchmark ===\n");
     printf("%-8s %12s %10s\n", "Size", "Time(ms)", "Valid");
 
     for (int s = 0; s < n_sizes; s++) {
@@ -48,9 +48,8 @@ int main(void)
 
         Matrix a = mat_create(dim, dim);
         Matrix b = mat_create(dim, dim);
-        Matrix c = mat_create(dim, dim);
 
-        if (!a.data || !b.data || !c.data) {
+        if (!a.data || !b.data) {
             printf("FAIL allocation %zu\n", dim);
             fail_count++;
             all_valid = false;
@@ -60,49 +59,29 @@ int main(void)
         fill_matrix(&a, 42 + s * 7);
         fill_matrix(&b, 99 + s * 13);
 
-        /* Compute reference naively */
-        Matrix c_ref = mat_create(dim, dim);
-        memset(c_ref.data, 0, dim * dim * sizeof(double));
-        for (size_t i = 0; i < dim; i++)
-            for (size_t k = 0; k < dim; k++)
-                for (size_t j = 0; j < dim; j++)
-                    c_ref.data[i * dim + j] += a.data[i * dim + k] * b.data[k * dim + j];
+        /* Compute reference */
+        double ref = 0.0;
+        for (size_t i = 0; i < dim * dim; i++)
+            ref += a.data[i] * b.data[i];
 
-        int rc = mat_mul(a, b, &c);
-        if (rc != 0) {
-            printf("FAIL %zu x %zu: error code %d\n", dim, dim, rc);
-            fail_count++;
-            all_valid = false;
-            mat_free(&c_ref);
-            continue;
-        }
-
-        /* Correctness check */
-        bool valid = true;
-        for (size_t i = 0; i < dim && valid; i++)
-            for (size_t j = 0; j < dim && valid; j++) {
-                double diff = fabs(c.data[i * dim + j] - c_ref.data[i * dim + j]);
-                if (diff > EPSILON) {
-                    printf("FAIL %zu×%zu[%zu][%zu]: got %.6f expected %.6f\n",
-                           dim, dim, i, j, c.data[i * dim + j], c_ref.data[i * dim + j]);
-                    valid = false;
-                }
-            }
+        double result = mat_dot(a, b);
+        bool valid = fabs(result - ref) < EPSILON;
 
         if (!valid) {
+            printf("FAIL %zu x %zu: validation error (got %.10f, expected %.10f)\n",
+                   dim, dim, result, ref);
             fail_count++;
             all_valid = false;
-            mat_free(&c_ref);
             continue;
         }
 
         /* Warmup */
-        mat_mul(a, b, &c);
+        mat_dot(a, b);
 
         struct timespec ts, te;
         clock_gettime(CLOCK_MONOTONIC, &ts);
         for (int r = 0; r < repeats; r++)
-            mat_mul(a, b, &c);
+            mat_dot(a, b);
         clock_gettime(CLOCK_MONOTONIC, &te);
 
         double total_ms = clock_ms(&ts, &te);
@@ -115,16 +94,14 @@ int main(void)
 
         mat_free(&a);
         mat_free(&b);
-        mat_free(&c);
-        mat_free(&c_ref);
     }
 
     printf("\n=== Correctness: %s ===\n", all_valid ? "PASS" : "FAIL");
 
     if (all_valid)
-        printf("METRIC mat_mul_ms=%.6f\n", primary_ms);
+        printf("METRIC mat_dot_ms=%.6f\n", primary_ms);
     else
-        printf("METRIC mat_mul_ms=999999.000000\n");
+        printf("METRIC mat_dot_ms=999999.000000\n");
 
     return EXIT_SUCCESS;
 }

@@ -137,7 +137,10 @@ mat_copy(const Matrix src, Matrix *dest)
 /**
  * @brief Perform element-wise addition of two matrices.
  * Both matrices must have identical dimensions for a successful result.
+ * Uses auto-vectorization with ivdep hint for serial path and OpenMP simd
+ * parallelism for large matrices (≥4096 elements).
  */
+__attribute__((optimize("O3")))
 int
 mat_add(const Matrix a, const Matrix b, Matrix *result)
 {
@@ -153,17 +156,23 @@ mat_add(const Matrix a, const Matrix b, Matrix *result)
         size_t count = a.rows * a.cols;
 
 #if defined(_OPENMP)
-        /* Parallelize only for large matrices to avoid thread overhead */
-        if (count >= 1024) {
-#pragma omp parallel for schedule(static)
+        /* Parallelize only for large matrices to avoid thread overhead.
+         * Threshold of 16384 elements (~128×128) avoids boundary spikes. */
+        if (count >= 16384) {
+#pragma omp parallel for simd
                 for (size_t i = 0; i < count; i++) {
                         result->data[i] = a.data[i] + b.data[i];
                 }
         } else
 #endif
         {
+                /* Let compiler auto-vectorize with ivdep hint */
+                const double *A = a.data;
+                const double *B = b.data;
+                double *R       = result->data;
+                #pragma GCC ivdep
                 for (size_t i = 0; i < count; i++) {
-                        result->data[i] = a.data[i] + b.data[i];
+                        R[i] = A[i] + B[i];
                 }
         }
         return 0;
@@ -243,11 +252,14 @@ mat_mul(const Matrix a, const Matrix b, Matrix *result)
 
 /**
  * @brief Scale a matrix by a scalar factor.
+ * Uses auto-vectorization with ivdep hint for serial path and OpenMP simd
+ * parallelism for large matrices (≥16384 elements).
  * @param m Input matrix to scale
  * @param scalar Scalar multiplier
  * @param result Output matrix containing the scaled values (must not alias m)
  * @return 0 on success, -1 if input is invalid
  */
+__attribute__((optimize("O3")))
 int
 mat_scale(const Matrix m, double scalar, Matrix *result)
 {
@@ -263,16 +275,19 @@ mat_scale(const Matrix m, double scalar, Matrix *result)
 
         size_t count = m.rows * m.cols;
 #if defined(_OPENMP)
-        if (count >= 1024) {
-#pragma omp parallel for schedule(static)
+        if (count >= 16384) {
+#pragma omp parallel for simd
                 for (size_t i = 0; i < count; i++) {
                         result->data[i] = m.data[i] * scalar;
                 }
         } else
 #endif
         {
+                const double *M = m.data;
+                double *R       = result->data;
+                #pragma GCC ivdep
                 for (size_t i = 0; i < count; i++) {
-                        result->data[i] = m.data[i] * scalar;
+                        R[i] = M[i] * scalar;
                 }
         }
 
@@ -281,11 +296,14 @@ mat_scale(const Matrix m, double scalar, Matrix *result)
 
 /**
  * @brief Transpose a matrix (swap rows and columns).
+ * Uses cache blocking/tiling for large matrices to ensure both reads
+ * and writes are sequential within each block, fitting in L1 cache.
  * @param m Input matrix to transpose
  * @param result Output matrix containing the transposed values (must have
  * dimensions m.cols x m.rows)
  * @return 0 on success, -1 if input is invalid or dimensions mismatch
  */
+__attribute__((optimize("O3")))
 int
 mat_transpose(const Matrix m, Matrix *result)
 {
@@ -302,12 +320,57 @@ mat_transpose(const Matrix m, Matrix *result)
                 return -1;
         }
 
-        for (size_t i = 0; i < m.rows; i++) {
-                for (size_t j = 0; j < m.cols; j++) {
-                        result->data[j * result->cols + i] =
-                            m.data[i * m.cols + j];
+        size_t rows = m.rows;
+        size_t cols = m.cols;
+
+        /* Block size tuned for L1 cache (~32KB). 64×64 doubles ≈ 32KB. */
+#define TRANSPOSE_BLOCK 64
+
+        if (rows > TRANSPOSE_BLOCK && cols > TRANSPOSE_BLOCK) {
+                const double *M  = m.data;
+                double *R        = result->data;
+                /* Buffered block transpose: load block row-by-row (sequential reads),
+                 * then write transposed with sequential dest writes.
+                 * Block size chosen so buffer fits in L1 cache (~32KB for 64x64). */
+                double buf[TRANSPOSE_BLOCK * TRANSPOSE_BLOCK];
+                for (size_t ii = 0; ii < rows; ii += TRANSPOSE_BLOCK) {
+                        size_t i_end =
+                            (ii + TRANSPOSE_BLOCK < rows)
+                                ? ii + TRANSPOSE_BLOCK : rows;
+                        size_t bh = i_end - ii;
+                        for (size_t jj = 0; jj < cols; jj += TRANSPOSE_BLOCK) {
+                                size_t j_end = (jj + TRANSPOSE_BLOCK < cols)
+                                                   ? jj + TRANSPOSE_BLOCK
+                                                   : cols;
+                                size_t bw = j_end - jj;
+
+                                /* Load source block into buffer row-by-row */
+                                for (size_t bi = 0; bi < bh; bi++) {
+                                        const double *src = M + (ii + bi) * cols + jj;
+                                        double *dst_buf   = buf + bi * bw;
+                                        memcpy(dst_buf, src, bw * sizeof(double));
+                                }
+
+                                /* Write transposed: outer=bj(dest row), inner=bi(dest col)
+                                 * This gives sequential writes along each dest row. */
+                                for (size_t bj = 0; bj < bw; bj++) {
+                                        double *dst_row = R + (jj + bj) * rows + ii;
+                                        for (size_t bi = 0; bi < bh; bi++) {
+                                                dst_row[bi] = buf[bi * bw + bj];
+                                        }
+                                }
+                        }
+                }
+        } else {
+                /* Small matrix — naive loop is fine */
+                for (size_t i = 0; i < rows; i++) {
+                        for (size_t j = 0; j < cols; j++) {
+                                result->data[j * rows + i] =
+                                    m.data[i * cols + j];
+                        }
                 }
         }
+#undef TRANSPOSE_BLOCK
 
         return 0;
 }
@@ -444,12 +507,29 @@ mat_norm_l2(const Matrix *A)
                 return NAN;
         }
         double sum = 0.0;
-        for (size_t i = 0; i < A->rows; i++) {
-                for (size_t j = 0; j < A->cols; j++) {
-                        double val = A->data[i * A->cols + j];
+        size_t count = A->rows * A->cols;
+
+#if defined(_OPENMP)
+        if (count >= 4096) {
+#pragma omp parallel for simd reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        double val = A->data[i];
+                        sum += val * val;
+                }
+        } else {
+#pragma omp simd reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        double val = A->data[i];
                         sum += val * val;
                 }
         }
+#else
+#pragma GCC ivdep
+        for (size_t i = 0; i < count; i++) {
+                double val = A->data[i];
+                sum += val * val;
+        }
+#endif
         return sqrt(sum);
 }
 
@@ -552,9 +632,24 @@ mat_dot(const Matrix A, const Matrix B)
         double sum = 0.0;
         size_t count = A.rows * A.cols;
 
+#if defined(_OPENMP)
+        if (count >= 65536) {
+#pragma omp parallel for simd reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        sum += A.data[i] * B.data[i];
+                }
+        } else {
+#pragma omp simd reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        sum += A.data[i] * B.data[i];
+                }
+        }
+#else
+#pragma GCC ivdep
         for (size_t i = 0; i < count; i++) {
                 sum += A.data[i] * B.data[i];
         }
+#endif
 
         return sum;
 }
@@ -567,11 +662,17 @@ mat_dot(const Matrix A, const Matrix B)
  * 2. For each column, normalize pivot row and eliminate other rows
  * 3. Extract inverse from right half of augmented matrix
  *
+ * Optimizations:
+ * - memcpy for row initialization, swap, and extraction
+ * - #pragma GCC ivdep on inner loops for auto-vectorization (AVX2)
+ * - Split elimination loop to avoid branch per iteration
+ *
  * @param A The input square matrix (must be n × n and non-singular)
  * @param result Output matrix containing the inverse (must be pre-allocated
  * with same dimensions)
  * @return 0 on success, -1 if matrix is singular or not square
  */
+__attribute__((optimize("O3")))
 int
 mat_inv(const Matrix A, Matrix *result)
 {
@@ -591,30 +692,29 @@ mat_inv(const Matrix A, Matrix *result)
         }
 
         size_t n = A.rows;
+        size_t stride = 2 * n;
 
         // Create augmented matrix [A | I]
-        double *aug = (double *)malloc(n * (2 * n) * sizeof(double));
+        double *aug = (double *)malloc(n * stride * sizeof(double));
         if (!aug) {
                 fprintf(stderr, "mat_inv: Memory allocation failed\n");
                 return -1;
         }
 
-        // Initialize augmented matrix: left side = A, right side = I
+        // Initialize: copy A into left half, set identity in right half
         for (size_t i = 0; i < n; i++) {
-                for (size_t j = 0; j < n; j++) {
-                        aug[i * (2 * n) + j] = A.data[i * n + j]; // Left: A
-                        aug[i * (2 * n) + n + j] =
-                            (i == j) ? 1.0 : 0.0; // Right: I
-                }
+                memcpy(aug + i * stride, A.data + i * n, n * sizeof(double));
+                memset(aug + i * stride + n, 0, n * sizeof(double));
+                aug[i * stride + n + i] = 1.0;
         }
 
         // Gauss-Jordan elimination
         for (size_t col = 0; col < n; col++) {
                 // Find pivot (largest absolute value in column)
                 size_t pivot_row = col;
-                double max_val = fabs(aug[col * (2 * n) + col]);
+                double max_val = fabs(aug[col * stride + col]);
                 for (size_t i = col + 1; i < n; i++) {
-                        double val = fabs(aug[i * (2 * n) + col]);
+                        double val = fabs(aug[i * stride + col]);
                         if (val > max_val) {
                                 max_val = val;
                                 pivot_row = i;
@@ -629,39 +729,77 @@ mat_inv(const Matrix A, Matrix *result)
                         return -1;
                 }
 
-                // Swap rows if needed
+                // Swap rows if needed — use memcpy-based 3-way swap
                 if (pivot_row != col) {
-                        for (size_t j = 0; j < 2 * n; j++) {
-                                double temp = aug[col * (2 * n) + j];
-                                aug[col * (2 * n) + j] =
-                                    aug[pivot_row * (2 * n) + j];
-                                aug[pivot_row * (2 * n) + j] = temp;
+                        double *row_a = aug + col * stride;
+                        double *row_b = aug + pivot_row * stride;
+                        double tmp_buf[64];
+                        size_t swap_bytes = stride * sizeof(double);
+                        if (swap_bytes <= sizeof(tmp_buf)) {
+                                memcpy(tmp_buf, row_a, swap_bytes);
+                                memcpy(row_a, row_b, swap_bytes);
+                                memcpy(row_b, tmp_buf, swap_bytes);
+                        } else {
+                                double *tmp = (double *)malloc(swap_bytes);
+                                memcpy(tmp, row_a, swap_bytes);
+                                memcpy(row_a, row_b, swap_bytes);
+                                memcpy(row_b, tmp, swap_bytes);
+                                free(tmp);
                         }
                 }
 
-                // Normalize pivot row
-                double pivot = aug[col * (2 * n) + col];
-                for (size_t j = 0; j < 2 * n; j++) {
-                        aug[col * (2 * n) + j] /= pivot;
+                // Normalize pivot row — auto-vectorizable with ivdep
+                double *pivot_row_ptr = aug + col * stride;
+                double inv_pivot = 1.0 / pivot_row_ptr[col];
+                #pragma GCC ivdep
+                for (size_t j = 0; j < stride; j++) {
+                        pivot_row_ptr[j] *= inv_pivot;
                 }
 
                 // Eliminate column in all other rows
-                for (size_t i = 0; i < n; i++) {
-                        if (i != col) {
-                                double factor = aug[i * (2 * n) + col];
-                                for (size_t j = 0; j < 2 * n; j++) {
-                                        aug[i * (2 * n) + j] -=
-                                            factor * aug[col * (2 * n) + j];
+#if defined(_OPENMP)
+                if (n >= 32) {
+#pragma omp parallel for schedule(static)
+                        for (long idx = 0; idx < (long)n; idx++) {
+                                size_t i = (size_t)idx;
+                                if (i == col) continue;
+                                double factor = aug[i * stride + col];
+                                double *target_row = aug + i * stride;
+                                #pragma omp simd
+                                for (size_t j = 0; j < stride; j++) {
+                                        target_row[j] -=
+                                            factor * pivot_row_ptr[j];
+                                }
+                        }
+                } else
+#endif
+                {
+                        // Serial: split to avoid branch per iteration
+                        for (size_t i = 0; i < col; i++) {
+                                double factor = aug[i * stride + col];
+                                double *target_row = aug + i * stride;
+                                #pragma GCC ivdep
+                                for (size_t j = 0; j < stride; j++) {
+                                        target_row[j] -=
+                                            factor * pivot_row_ptr[j];
+                                }
+                        }
+                        for (size_t i = col + 1; i < n; i++) {
+                                double factor = aug[i * stride + col];
+                                double *target_row = aug + i * stride;
+                                #pragma GCC ivdep
+                                for (size_t j = 0; j < stride; j++) {
+                                        target_row[j] -=
+                                            factor * pivot_row_ptr[j];
                                 }
                         }
                 }
         }
 
-        // Extract inverse from right half of augmented matrix
+        // Extract inverse from right half — use memcpy per row
         for (size_t i = 0; i < n; i++) {
-                for (size_t j = 0; j < n; j++) {
-                        result->data[i * n + j] = aug[i * (2 * n) + n + j];
-                }
+                memcpy(result->data + i * n, aug + i * stride + n,
+                       n * sizeof(double));
         }
 
         free(aug);
