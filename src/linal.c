@@ -621,6 +621,7 @@ mat_trace(const Matrix *A)
         return ((t[0]+t[1])+(t[2]+t[3]))+((t[4]+t[5])+(t[6]+t[7]));
 }
 
+__attribute__((optimize("O3")))
 double
 mat_det(const Matrix *A)
 {
@@ -640,12 +641,90 @@ mat_det(const Matrix *A)
         }
         memcpy(temp, A->data, n * n * sizeof(double));
 
+        double *__restrict__ r = temp;
         double det = 1.0;
+#if defined(_OPENMP) && n > 128
+        /* Task-based elimination: single parallel region, tasks per row.
+         * Reduces fork/join from ~250 spawns to 1 thread pool creation. */
+#pragma omp parallel num_threads(4)
+        {
+#pragma omp single
+                {
+                        for (size_t i = 0; i < n; i++) {
+                                /* Pivot selection */
+                                size_t pivot = i;
+                                for (size_t j = i + 1; j < n; j++) {
+                                        if (fabs(r[j * n + i]) > fabs(r[pivot * n + i])) {
+                                                pivot = j;
+                                        }
+                                }
+
+                                if (pivot != i) {
+                                        if (n <= 64) {
+                                                for (size_t k = 0; k < n; k++) {
+                                                        double t = r[i * n + k];
+                                                        r[i * n + k] = r[pivot * n + k];
+                                                        r[pivot * n + k] = t;
+                                                }
+                                        } else {
+                                                size_t bytes = n * sizeof(double);
+                                                double *__restrict__ tmp =
+                                                    (double *)__builtin_alloca(bytes);
+                                                memcpy(tmp, r + i * n, bytes);
+                                                memcpy(r + i * n, r + pivot * n, bytes);
+                                                memcpy(r + pivot * n, tmp, bytes);
+                                        }
+                                        det *= -1.0;
+                                }
+
+                                if (fabs(r[i * n + i]) < 1e-15) {
+                                        free(temp);
+                                        return det;
+                                }
+
+                                det *= r[i * n + i];
+
+                                double inv_pivot = 1.0 / r[i * n + i];
+                                const double *__restrict__ src = r + i * n;
+                                __builtin_prefetch(src, 0, 3);
+
+                                if (n - i >= 8) {
+#pragma omp taskloop grainsize(4)
+                                        for (size_t j = i + 1; j < n; j++) {
+                                                double factor = r[j * n + i] * inv_pivot;
+                                                size_t k = i + 1;
+                                                #pragma GCC ivdep
+                                                for (; k + 7 < n; k += 8) {
+                                                        r[j * n + k] -= factor * src[k];
+                                                }
+                                                for (; k < n; k++) {
+                                                        r[j * n + k] -= factor * src[k];
+                                                }
+                                        }
+#pragma omp taskwait
+                                } else {
+                                        for (size_t j = i + 1; j < n; j++) {
+                                                double factor = r[j * n + i] * inv_pivot;
+                                                size_t k = i + 1;
+                                                #pragma GCC ivdep
+                                                for (; k + 7 < n; k += 8) {
+                                                        r[j * n + k] -= factor * src[k];
+                                                }
+                                                for (; k < n; k++) {
+                                                        r[j * n + k] -= factor * src[k];
+                                                }
+                                        }
+                                }
+#pragma omp taskwait  // ensure all tasks complete before next iteration
+                        } /* end single loop */
+                } /* end single */
+        } /* end parallel */
+#else
         for (size_t i = 0; i < n; i++) {
                 /* Pivot selection */
                 size_t pivot = i;
                 for (size_t j = i + 1; j < n; j++) {
-                        if (fabs(temp[j * n + i]) > fabs(temp[pivot * n + i])) {
+                        if (fabs(r[j * n + i]) > fabs(r[pivot * n + i])) {
                                 pivot = j;
                         }
                 }
@@ -653,27 +732,76 @@ mat_det(const Matrix *A)
                 if (pivot != i) {
                         /* Swap rows */
                         for (size_t k = 0; k < n; k++) {
-                                double t = temp[i * n + k];
-                                temp[i * n + k] = temp[pivot * n + k];
-                                temp[pivot * n + k] = t;
+                                double t = r[i * n + k];
+                                r[i * n + k] = r[pivot * n + k];
+                                r[pivot * n + k] = t;
                         }
                         det *= -1.0;
                 }
 
-                if (fabs(temp[i * n + i]) < 1e-15) {
+                if (fabs(r[i * n + i]) < 1e-15) {
                         free(temp);
                         return 0.0;
                 }
 
-                det *= temp[i * n + i];
+                det *= r[i * n + i];
 
-                for (size_t j = i + 1; j < n; j++) {
-                        double factor = temp[j * n + i] / temp[i * n + i];
-                        for (size_t k = i + 1; k < n; k++) {
-                                temp[j * n + k] -= factor * temp[i * n + k];
+                /* Elimination: compute factor once per row, then update */
+                double inv_pivot = 1.0 / r[i * n + i];
+                const double *__restrict__ src = r + i * n;
+                /* Prefetch source row once — stays in cache across all j iterations */
+                __builtin_prefetch(src, 0, 3);
+#if defined(_OPENMP)
+                if (n - i >= 16) {
+#pragma omp parallel for schedule(static) num_threads(4)
+                        for (size_t j = i + 1; j < n; j++) {
+                                double factor = r[j * n + i] * inv_pivot;
+                                double *__restrict__ dest = r + j * n;
+                                /* Prefetch dest row — overlaps memory read with compute */
+                                __builtin_prefetch(dest, 1, 3);
+                                size_t k = i + 1;
+                                #pragma GCC ivdep
+                                for (; k + 7 < n; k += 8) {
+                                        dest[k]     -= factor * src[k];
+                                        dest[k + 1] -= factor * src[k + 1];
+                                        dest[k + 2] -= factor * src[k + 2];
+                                        dest[k + 3] -= factor * src[k + 3];
+                                        dest[k + 4] -= factor * src[k + 4];
+                                        dest[k + 5] -= factor * src[k + 5];
+                                        dest[k + 6] -= factor * src[k + 6];
+                                        dest[k + 7] -= factor * src[k + 7];
+                                }
+                                for (; k < n; k++) {
+                                        dest[k] -= factor * src[k];
+                                }
+                        }
+                } else
+#endif
+                {
+                        for (size_t j = i + 1; j < n; j++) {
+                                double factor = r[j * n + i] * inv_pivot;
+                                double *__restrict__ dest = r + j * n;
+                                /* Prefetch dest row — overlaps memory read with compute */
+                                __builtin_prefetch(dest, 1, 3);
+                                size_t k = i + 1;
+                                #pragma GCC ivdep
+                                for (; k + 7 < n; k += 8) {
+                                        dest[k]     -= factor * src[k];
+                                        dest[k + 1] -= factor * src[k + 1];
+                                        dest[k + 2] -= factor * src[k + 2];
+                                        dest[k + 3] -= factor * src[k + 3];
+                                        dest[k + 4] -= factor * src[k + 4];
+                                        dest[k + 5] -= factor * src[k + 5];
+                                        dest[k + 6] -= factor * src[k + 6];
+                                        dest[k + 7] -= factor * src[k + 7];
+                                }
+                                for (; k < n; k++) {
+                                        dest[k] -= factor * src[k];
+                                }
                         }
                 }
         }
+#endif
 
         free(temp);
         return det;

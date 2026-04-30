@@ -106,8 +106,8 @@ int main(void)
             continue;
         }
 
-        /* Warmup */
-        mat_det(&a);
+        /* Warmup: prime OpenMP thread pool and caches before timing */
+        for (int w = 0; w < 3; w++) mat_det(&a);
 
         struct timespec ts, te;
         clock_gettime(CLOCK_MONOTONIC, &ts);
