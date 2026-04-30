@@ -544,30 +544,32 @@ mat_norm_l2(const Matrix *A)
         if (!A || !A->data) {
                 return NAN;
         }
-        double sum = 0.0;
+
+        const double *__restrict__ data = A->data;
         size_t count = A->rows * A->cols;
+        double sum = 0.0;
 
 #if defined(_OPENMP)
-        if (count >= 4096) {
-#pragma omp parallel for simd reduction(+:sum)
+        /* Thread-level parallelism with SIMD for large matrices.
+         * Higher threshold than baseline (4K → 16K) to reduce overhead on small inputs */
+        if (count >= 16384) { /* 128*128 = 16K elements */
+#pragma omp parallel for simd num_threads(24) schedule(static) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
-                        double val = A->data[i];
+                        double val = data[i];
                         sum += val * val;
                 }
-        } else {
-#pragma omp simd reduction(+:sum)
-                for (size_t i = 0; i < count; i++) {
-                        double val = A->data[i];
-                        sum += val * val;
-                }
-        }
-#else
-#pragma GCC ivdep
-        for (size_t i = 0; i < count; i++) {
-                double val = A->data[i];
-                sum += val * val;
-        }
+                return sqrt(sum);
+        } else
 #endif
+        {
+                /* Small matrices: simple loop, overhead not worth it */
+                #pragma GCC ivdep
+                for (size_t i = 0; i < count; i++) {
+                        double val = data[i];
+                        sum += val * val;
+                }
+        }
+
         return sqrt(sum);
 }
 
