@@ -701,6 +701,7 @@ mat_det(const Matrix *A)
                                                         r[j * n + k] -= factor * src[k];
                                                 }
                                         }
+#pragma omp taskwait
                                 } else {
                                         for (size_t j = i + 1; j < n; j++) {
                                                 double factor = r[j * n + i] * inv_pivot;
@@ -714,6 +715,7 @@ mat_det(const Matrix *A)
                                                 }
                                         }
                                 }
+#pragma omp taskwait  // ensure all tasks complete before next iteration
                         } /* end single loop */
                 } /* end single */
         } /* end parallel */
