@@ -965,7 +965,7 @@ mat_inv(const Matrix A, Matrix *result)
 
                 // Eliminate column in all other rows
 #if defined(_OPENMP)
-                if (n >= 32) {
+                if (n >= 8) {
 #pragma omp parallel for schedule(static)
                         for (long idx = 0; idx < (long)n; idx++) {
                                 size_t i = (size_t)idx;
