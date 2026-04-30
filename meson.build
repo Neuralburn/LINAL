@@ -11,6 +11,20 @@ project(
 
 cc = meson.get_compiler('c')
 
+# Optional OpenMP support — parallelization is an optimization, not a requirement.
+# Adding -fopenmp enables OpenMP pragmas (ignored gracefully when absent).
+if cc.has_argument('-fopenmp')
+  openmp_dep = declare_dependency(
+    compile_args: ['-fopenmp'],
+    link_args: ['-fopenmp'],
+    dependencies: [cc.find_library('gomp', required : false)],
+  )
+else
+  message('OpenMP not available — serial fallback for all functions')
+  # Empty dependency so downstream code doesn't fail on macOS/clang
+  openmp_dep = declare_dependency()
+endif
+
 project_description = 'A small linear algebra Meson-based C11 library'
 
 ver = meson.project_version().split('.')
@@ -42,16 +56,16 @@ linal_lib = static_library(
   library_sources,
   include_directories: [public_headers, generated_headers],
   install: true,
+  dependencies: openmp_dep,
 )
 
 math_lib = cc.find_library('m')
-gomp_lib = cc.find_library('gomp', required : false)
 
 linal_dep = declare_dependency(
   include_directories: [public_headers, generated_headers],
   link_with: linal_lib,
   sources: generated_version_header,
-  dependencies: [math_lib, gomp_lib],
+  dependencies: [math_lib, openmp_dep],
 )
 
 meson.override_dependency('linal', linal_dep)
