@@ -621,7 +621,7 @@ mat_trace(const Matrix *A)
         return ((t[0]+t[1])+(t[2]+t[3]))+((t[4]+t[5])+(t[6]+t[7]));
 }
 
-__attribute__((optimize("O3,unroll-loops")))
+__attribute__((optimize("O3")))
 double
 mat_det(const Matrix *A)
 {
