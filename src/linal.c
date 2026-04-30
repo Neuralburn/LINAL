@@ -8,6 +8,7 @@
 #include "linal.h"
 
 #include <math.h>
+#include <omp.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -699,27 +700,26 @@ mat_dot(const Matrix A, const Matrix B)
                 return NAN;
         }
 
+        const double *__restrict__ a = A.data;
+        const double *__restrict__ b = B.data;
         double sum = 0.0;
         size_t count = A.rows * A.cols;
 
 #if defined(_OPENMP)
+        /* Parallel with controlled thread count — fewer threads reduce variance */
         if (count >= 65536) {
-#pragma omp parallel for simd reduction(+:sum)
+#pragma omp parallel for num_threads(24) schedule(static) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
-                        sum += A.data[i] * B.data[i];
+                        sum += a[i] * b[i];
                 }
-        } else {
-#pragma omp simd reduction(+:sum)
-                for (size_t i = 0; i < count; i++) {
-                        sum += A.data[i] * B.data[i];
-                }
-        }
-#else
-#pragma GCC ivdep
-        for (size_t i = 0; i < count; i++) {
-                sum += A.data[i] * B.data[i];
-        }
+        } else
 #endif
+        {
+                #pragma GCC ivdep
+                for (size_t i = 0; i < count; i++) {
+                        sum += a[i] * b[i];
+                }
+        }
 
         return sum;
 }
