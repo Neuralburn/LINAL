@@ -680,6 +680,8 @@ mat_det(const Matrix *A)
                         for (size_t j = i + 1; j < n; j++) {
                                 double factor = r[j * n + i] * inv_pivot;
                                 double *__restrict__ dest = r + j * n;
+                                /* Prefetch dest row — overlaps memory read with compute */
+                                __builtin_prefetch(dest, 1, 3);
                                 size_t k = i + 1;
                                 #pragma GCC ivdep
                                 for (; k + 7 < n; k += 8) {
@@ -702,6 +704,8 @@ mat_det(const Matrix *A)
                         for (size_t j = i + 1; j < n; j++) {
                                 double factor = r[j * n + i] * inv_pivot;
                                 double *__restrict__ dest = r + j * n;
+                                /* Prefetch dest row — overlaps memory read with compute */
+                                __builtin_prefetch(dest, 1, 3);
                                 size_t k = i + 1;
                                 #pragma GCC ivdep
                                 for (; k + 7 < n; k += 8) {
