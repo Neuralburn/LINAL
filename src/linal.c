@@ -644,79 +644,88 @@ mat_det(const Matrix *A)
         double *__restrict__ r = temp;
         double det = 1.0;
 #if defined(_OPENMP) && n > 128
-        /* Task-based elimination: single parallel region, tasks per row.
-         * Reduces fork/join from ~250 spawns to 1 thread pool creation. */
-#pragma omp parallel num_threads(4)
-        {
-#pragma omp single
-                {
-                        for (size_t i = 0; i < n; i++) {
-                                /* Pivot selection */
-                                size_t pivot = i;
-                                for (size_t j = i + 1; j < n; j++) {
-                                        if (fabs(r[j * n + i]) > fabs(r[pivot * n + i])) {
-                                                pivot = j;
-                                        }
+        /* Blocked LU: process B=8 columns together for large matrices.
+         * Reduces memory traffic per dest row by updating once per block
+         * instead of once per column. Source rows stay in cache across block. */
+        const size_t BLOCK = 8;
+        for (size_t i_start = 0; i_start < n - 1; i_start += BLOCK) {
+                size_t i_end = (i_start + BLOCK < n) ? i_start + BLOCK : n;
+                /* Process each column in block: find pivots, swap rows */
+                for (size_t p = i_start; p < i_end && p < n - 1; p++) {
+                        size_t pivot = p;
+                        for (size_t j = p + 1; j < n; j++) {
+                                if (fabs(r[j * n + p]) > fabs(r[pivot * n + p])) {
+                                        pivot = j;
                                 }
+                        }
 
-                                if (pivot != i) {
-                                        if (n <= 64) {
-                                                for (size_t k = 0; k < n; k++) {
-                                                        double t = r[i * n + k];
-                                                        r[i * n + k] = r[pivot * n + k];
-                                                        r[pivot * n + k] = t;
-                                                }
-                                        } else {
-                                                size_t bytes = n * sizeof(double);
-                                                double *__restrict__ tmp =
-                                                    (double *)__builtin_alloca(bytes);
-                                                memcpy(tmp, r + i * n, bytes);
-                                                memcpy(r + i * n, r + pivot * n, bytes);
-                                                memcpy(r + pivot * n, tmp, bytes);
-                                        }
-                                        det *= -1.0;
-                                }
+                        if (pivot != p) {
+                                size_t bytes = n * sizeof(double);
+                                double *__restrict__ tmp =
+                                    (double *)__builtin_alloca(bytes);
+                                memcpy(tmp, r + p * n, bytes);
+                                memcpy(r + p * n, r + pivot * n, bytes);
+                                memcpy(r + pivot * n, tmp, bytes);
+                                det *= -1.0;
+                        }
 
-                                if (fabs(r[i * n + i]) < 1e-15) {
-                                        free(temp);
-                                        return det;
-                                }
+                        if (fabs(r[p * n + p]) < 1e-15) {
+                                free(temp);
+                                return det;
+                        }
+                }
 
-                                det *= r[i * n + i];
+                /* Accumulate determinant from diagonal elements in block */
+                for (size_t p = i_start; p < i_end && p < n; p++) {
+                        det *= r[p * n + p];
+                }
 
-                                double inv_pivot = 1.0 / r[i * n + i];
-                                const double *__restrict__ src = r + i * n;
-                                __builtin_prefetch(src, 0, 3);
+                /* Blocked elimination: compute factors once per dest row using
+                 * all B source cols, then update dest in one pass over trailing cols.
+                 * This reduces memory traffic: each dest row written once per block
+                 * instead of B times (once per column). */
+                size_t j_start = i_end;
+#pragma omp parallel for schedule(static) num_threads(4)
+                for (size_t j = j_start; j < n; j++) {
+                        /* Compute factors for all B source columns */
+                        double factor[BLOCK];
+                        size_t bc = 0;
+                        for (size_t p = i_start; p < i_end && p < n; p++, bc++) {
+                                factor[bc] = r[j * n + p] / r[p * n + p];
+                        }
 
-                                if (n - i >= 8) {
-#pragma omp taskloop grainsize(4)
-                                        for (size_t j = i + 1; j < n; j++) {
-                                                double factor = r[j * n + i] * inv_pivot;
-                                                size_t k = i + 1;
-                                                #pragma GCC ivdep
-                                                for (; k + 7 < n; k += 8) {
-                                                        r[j * n + k] -= factor * src[k];
-                                                }
-                                                for (; k < n; k++) {
-                                                        r[j * n + k] -= factor * src[k];
-                                                }
-                                        }
+                        /* Prefetch dest row — overlaps memory read with compute */
+                        __builtin_prefetch(r + j * n, 1, 3);
+                        const double *__restrict__ src_block[BLOCK];
+                        size_t bc2 = 0;
+                        for (size_t p = i_start; p < i_end && p < n; p++, bc2++) {
+                                src_block[bc2] = r + p * n;
+                        }
+                        #pragma GCC ivdep
+                        for (size_t k = i_end; k < n;) {
+                                if (k + 7 < n) {
+                                        /* Process 8 columns at once using all B source cols */
+                                        r[j * n + k]     -= factor[0] * src_block[0][k] - factor[1] * src_block[1][k] - factor[2] * src_block[2][k] - factor[3] * src_block[3][k] - factor[4] * src_block[4][k] - factor[5] * src_block[5][k] - factor[6] * src_block[6][k] - factor[7] * src_block[7][k];
+                                        r[j * n + k + 1] -= factor[0] * src_block[0][k+1] - factor[1] * src_block[1][k+1] - factor[2] * src_block[2][k+1] - factor[3] * src_block[3][k+1] - factor[4] * src_block[4][k+1] - factor[5] * src_block[5][k+1] - factor[6] * src_block[6][k+1] - factor[7] * src_block[7][k+1];
+                                        r[j * n + k + 2] -= factor[0] * src_block[0][k+2] - factor[1] * src_block[1][k+2] - factor[2] * src_block[2][k+2] - factor[3] * src_block[3][k+2] - factor[4] * src_block[4][k+2] - factor[5] * src_block[5][k+2] - factor[6] * src_block[6][k+2] - factor[7] * src_block[7][k+2];
+                                        r[j * n + k + 3] -= factor[0] * src_block[0][k+3] - factor[1] * src_block[1][k+3] - factor[2] * src_block[2][k+3] - factor[3] * src_block[3][k+3] - factor[4] * src_block[4][k+3] - factor[5] * src_block[5][k+3] - factor[6] * src_block[6][k+3] - factor[7] * src_block[7][k+3];
+                                        r[j * n + k + 4] -= factor[0] * src_block[0][k+4] - factor[1] * src_block[1][k+4] - factor[2] * src_block[2][k+4] - factor[3] * src_block[3][k+4] - factor[4] * src_block[4][k+4] - factor[5] * src_block[5][k+4] - factor[6] * src_block[6][k+4] - factor[7] * src_block[7][k+4];
+                                        r[j * n + k + 5] -= factor[0] * src_block[0][k+5] - factor[1] * src_block[1][k+5] - factor[2] * src_block[2][k+5] - factor[3] * src_block[3][k+5] - factor[4] * src_block[4][k+5] - factor[5] * src_block[5][k+5] - factor[6] * src_block[6][k+5] - factor[7] * src_block[7][k+5];
+                                        r[j * n + k + 6] -= factor[0] * src_block[0][k+6] - factor[1] * src_block[1][k+6] - factor[2] * src_block[2][k+6] - factor[3] * src_block[3][k+6] - factor[4] * src_block[4][k+6] - factor[5] * src_block[5][k+6] - factor[6] * src_block[6][k+6] - factor[7] * src_block[7][k+6];
+                                        r[j * n + k + 7] -= factor[0] * src_block[0][k+7] - factor[1] * src_block[1][k+7] - factor[2] * src_block[2][k+7] - factor[3] * src_block[3][k+7] - factor[4] * src_block[4][k+7] - factor[5] * src_block[5][k+7] - factor[6] * src_block[6][k+7] - factor[7] * src_block[7][k+7];
+                                        k += 8;
                                 } else {
-                                        for (size_t j = i + 1; j < n; j++) {
-                                                double factor = r[j * n + i] * inv_pivot;
-                                                size_t k = i + 1;
-                                                #pragma GCC ivdep
-                                                for (; k + 7 < n; k += 8) {
-                                                        r[j * n + k] -= factor * src[k];
-                                                }
-                                                for (; k < n; k++) {
-                                                        r[j * n + k] -= factor * src[k];
-                                                }
+                                        /* Handle remaining elements */
+                                        while (k < n) {
+                                                r[j * n + k] -= factor[0] * src_block[0][k] - factor[1] * src_block[1][k] - factor[2] * src_block[2][k] - factor[3] * src_block[3][k] - factor[4] * src_block[4][k] - factor[5] * src_block[5][k] - factor[6] * src_block[6][k] - factor[7] * src_block[7][k];
+                                                k++;
                                         }
                                 }
-                        } /* end single loop */
-                } /* end single */
-        } /* end parallel */
+                        }
+                }
+
+                /* Skip to next block — we've processed all columns in this block */
+" + "                continue;
 #else
         for (size_t i = 0; i < n; i++) {
                 /* Pivot selection */
