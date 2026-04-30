@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # ── Pre-check: compile (fast) ────────────────────────────────────────
-gcc -O3 -march=native -std=c11 -D_GNU_SOURCE -fopenmp \
+gcc -O3 -march=native -funroll-loops -std=c11 -D_GNU_SOURCE -fopenmp \
     -I include -I build \
     -lm -lgomp tests/benchmark_mat_inv.c src/linal.c \
     -o /tmp/bench_inv 2>&1 | grep -i error || true
