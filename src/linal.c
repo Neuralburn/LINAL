@@ -674,23 +674,49 @@ mat_det(const Matrix *A)
                 const double *__restrict__ src = r + i * n;
                 /* Prefetch source row once — stays in cache across all j iterations */
                 __builtin_prefetch(src, 0, 3);
-                for (size_t j = i + 1; j < n; j++) {
-                        double factor = r[j * n + i] * inv_pivot;
-                        double *__restrict__ dest = r + j * n;
-                        size_t k = i + 1;
-                        #pragma GCC ivdep
-                        for (; k + 7 < n; k += 8) {
-                                dest[k]     -= factor * src[k];
-                                dest[k + 1] -= factor * src[k + 1];
-                                dest[k + 2] -= factor * src[k + 2];
-                                dest[k + 3] -= factor * src[k + 3];
-                                dest[k + 4] -= factor * src[k + 4];
-                                dest[k + 5] -= factor * src[k + 5];
-                                dest[k + 6] -= factor * src[k + 6];
-                                dest[k + 7] -= factor * src[k + 7];
+#if defined(_OPENMP)
+                if (n - i >= 8) {
+#pragma omp parallel for schedule(static)
+                        for (size_t j = i + 1; j < n; j++) {
+                                double factor = r[j * n + i] * inv_pivot;
+                                double *__restrict__ dest = r + j * n;
+                                size_t k = i + 1;
+                                #pragma GCC ivdep
+                                for (; k + 7 < n; k += 8) {
+                                        dest[k]     -= factor * src[k];
+                                        dest[k + 1] -= factor * src[k + 1];
+                                        dest[k + 2] -= factor * src[k + 2];
+                                        dest[k + 3] -= factor * src[k + 3];
+                                        dest[k + 4] -= factor * src[k + 4];
+                                        dest[k + 5] -= factor * src[k + 5];
+                                        dest[k + 6] -= factor * src[k + 6];
+                                        dest[k + 7] -= factor * src[k + 7];
+                                }
+                                for (; k < n; k++) {
+                                        dest[k] -= factor * src[k];
+                                }
                         }
-                        for (; k < n; k++) {
-                                dest[k] -= factor * src[k];
+                } else
+#endif
+                {
+                        for (size_t j = i + 1; j < n; j++) {
+                                double factor = r[j * n + i] * inv_pivot;
+                                double *__restrict__ dest = r + j * n;
+                                size_t k = i + 1;
+                                #pragma GCC ivdep
+                                for (; k + 7 < n; k += 8) {
+                                        dest[k]     -= factor * src[k];
+                                        dest[k + 1] -= factor * src[k + 1];
+                                        dest[k + 2] -= factor * src[k + 2];
+                                        dest[k + 3] -= factor * src[k + 3];
+                                        dest[k + 4] -= factor * src[k + 4];
+                                        dest[k + 5] -= factor * src[k + 5];
+                                        dest[k + 6] -= factor * src[k + 6];
+                                        dest[k + 7] -= factor * src[k + 7];
+                                }
+                                for (; k < n; k++) {
+                                        dest[k] -= factor * src[k];
+                                }
                         }
                 }
         }

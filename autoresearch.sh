@@ -3,9 +3,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # ── Pre-check: compile (fast) ────────────────────────────────────────
-gcc -O3 -std=c11 -D_GNU_SOURCE \
+gcc -O3 -std=c11 -D_GNU_SOURCE -fopenmp \
     -I include -I build \
-    -lm tests/benchmark_mat_det.c src/linal.c -o /tmp/bench_det 2>&1 || exit 1
+    -lm -lgomp tests/benchmark_mat_det.c src/linal.c -o /tmp/bench_det 2>&1 || exit 1
 
 # ── Run benchmark 3× and take median of last (256×256) time ─────────
 run_once() {
