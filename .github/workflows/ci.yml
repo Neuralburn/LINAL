@@ -30,6 +30,10 @@ jobs:
       - name: Install Meson and Ninja
         run: python -m pip install --upgrade meson ninja
 
+      - name: Install OpenMP on Ubuntu
+        run: sudo apt-get update && sudo apt-get install -y libomp-dev
+        if: matrix.os == 'ubuntu-latest'
+
       - name: Configure (debug + tests)
         run: meson setup build --buildtype=debug -Dbuild_tests=true -Db_sanitize=${{ matrix.sanitize }}
 
@@ -53,6 +57,10 @@ jobs:
 
       - name: Install Meson and Ninja
         run: python -m pip install --upgrade meson ninja
+
+      - name: Install OpenMP on Ubuntu
+        run: sudo apt-get update && sudo apt-get install -y libomp-dev
+        if: matrix.os == 'ubuntu-latest'
 
       - name: Configure (release)
         run: meson setup build --buildtype=release -Dbuild_tests=false
