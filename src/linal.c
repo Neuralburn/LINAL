@@ -643,6 +643,95 @@ mat_det(const Matrix *A)
 
         double *__restrict__ r = temp;
         double det = 1.0;
+#if defined(_OPENMP) && n > 128
+        /* Task-based elimination: single parallel region, tasks per row.
+         * Reduces fork/join from ~250 spawns to 1 thread pool creation. */
+#pragma omp parallel num_threads(4)
+        {
+#pragma omp single
+                {
+                        for (size_t i = 0; i < n; i++) {
+                                /* Pivot selection */
+                                size_t pivot = i;
+                                for (size_t j = i + 1; j < n; j++) {
+                                        if (fabs(r[j * n + i]) > fabs(r[pivot * n + i])) {
+                                                pivot = j;
+                                        }
+                                }
+
+                                if (pivot != i) {
+                                        if (n <= 64) {
+                                                for (size_t k = 0; k < n; k++) {
+                                                        double t = r[i * n + k];
+                                                        r[i * n + k] = r[pivot * n + k];
+                                                        r[pivot * n + k] = t;
+                                                }
+                                        } else {
+                                                size_t bytes = n * sizeof(double);
+                                                double *__restrict__ tmp =
+                                                    (double *)__builtin_alloca(bytes);
+                                                memcpy(tmp, r + i * n, bytes);
+                                                memcpy(r + i * n, r + pivot * n, bytes);
+                                                memcpy(r + pivot * n, tmp, bytes);
+                                        }
+                                        det *= -1.0;
+                                }
+
+                                if (fabs(r[i * n + i]) < 1e-15) {
+                                        free(temp);
+                                        return det;
+                                }
+
+                                det *= r[i * n + i];
+
+                                double inv_pivot = 1.0 / r[i * n + i];
+                                const double *__restrict__ src = r + i * n;
+                                __builtin_prefetch(src, 0, 3);
+
+                                if (n - i >= 8) {
+#pragma omp taskloop grainsize(4)
+                                        for (size_t j = i + 1; j < n; j++) {
+                                                double factor = r[j * n + i] * inv_pivot;
+                                                size_t k = i + 1;
+                                                #pragma GCC ivdep
+                                                for (; k + 7 < n; k += 8) {
+                                                        r[j * n + k]     -= factor * src[k];
+                                                        r[(j + 1) * n + k] -= factor * src[k];
+                                                        r[(j + 2) * n + k] -= factor * src[k];
+                                                        r[(j + 3) * n + k] -= factor * src[k];
+                                                        r[(j + 4) * n + k] -= factor * src[k];
+                                                        r[(j + 5) * n + k] -= factor * src[k];
+                                                        r[(j + 6) * n + k] -= factor * src[k];
+                                                        r[(j + 7) * n + k] -= factor * src[k];
+                                                }
+                                                for (; k < n; k++) {
+                                                        r[j * n + k] -= factor * src[k];
+                                                }
+                                        }
+                                } else {
+                                        for (size_t j = i + 1; j < n; j++) {
+                                                double factor = r[j * n + i] * inv_pivot;
+                                                size_t k = i + 1;
+                                                #pragma GCC ivdep
+                                                for (; k + 7 < n; k += 8) {
+                                                        r[j * n + k]     -= factor * src[k];
+                                                        r[(j + 1) * n + k] -= factor * src[k];
+                                                        r[(j + 2) * n + k] -= factor * src[k];
+                                                        r[(j + 3) * n + k] -= factor * src[k];
+                                                        r[(j + 4) * n + k] -= factor * src[k];
+                                                        r[(j + 5) * n + k] -= factor * src[k];
+                                                        r[(j + 6) * n + k] -= factor * src[k];
+                                                        r[(j + 7) * n + k] -= factor * src[k];
+                                                }
+                                                for (; k < n; k++) {
+                                                        r[j * n + k] -= factor * src[k];
+                                                }
+                                        }
+                                }
+                        } /* end single loop */
+                } /* end single */
+        } /* end parallel */
+#else
         for (size_t i = 0; i < n; i++) {
                 /* Pivot selection */
                 size_t pivot = i;
@@ -724,6 +813,7 @@ mat_det(const Matrix *A)
                         }
                 }
         }
+#endif
 
         free(temp);
         return det;
