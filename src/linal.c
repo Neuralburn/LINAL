@@ -551,9 +551,9 @@ mat_norm_l2(const Matrix *A)
 
 #if defined(_OPENMP)
         /* Thread-level parallelism with SIMD for large matrices.
-         * Higher threshold than baseline (4K → 16K) to reduce overhead on small inputs */
+         * Using all available threads (no num_threads limit). */
         if (count >= 16384) { /* 128*128 = 16K elements */
-#pragma omp parallel for simd num_threads(24) schedule(static) reduction(+:sum)
+#pragma omp parallel for simd schedule(static) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
                         double val = data[i];
                         sum += val * val;
