@@ -538,6 +538,7 @@ mat_identity(size_t n)
         return I;
 }
 
+__attribute__((optimize("O3,unroll-loops")))
 double
 mat_norm_l2(const Matrix *A)
 {
