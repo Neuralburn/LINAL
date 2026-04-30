@@ -675,7 +675,7 @@ mat_det(const Matrix *A)
                 /* Prefetch source row once — stays in cache across all j iterations */
                 __builtin_prefetch(src, 0, 3);
 #if defined(_OPENMP)
-                if (n - i >= 8) {
+                if (n - i >= 16) {
 #pragma omp parallel for schedule(static) num_threads(4)
                         for (size_t j = i + 1; j < n; j++) {
                                 double factor = r[j * n + i] * inv_pivot;

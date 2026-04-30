@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # ── Pre-check: compile (fast) ────────────────────────────────────────
-gcc -O3 -std=c11 -D_GNU_SOURCE -fopenmp \
+gcc -O3 -mavx2 -std=c11 -D_GNU_SOURCE -fopenmp \
     -I include -I build \
     -lm -lgomp tests/benchmark_mat_det.c src/linal.c -o /tmp/bench_det 2>&1 || exit 1
 
