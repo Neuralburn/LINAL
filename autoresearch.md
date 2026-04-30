@@ -56,3 +56,15 @@ Current state: Has O3 attr + ivdep + OpenMP parallel for with threshold n>=8 (wa
 - System default thread count works better than limiting threads for this workload (unlike mat_det where num_threads(4) was optimal).
 - `#pragma omp simd` on inner loop is already doing a good job with auto-vectorization; manual unrolling doesn't help much.
 - The normalization step (pivot row scaling) is serial and could potentially benefit from vectorization or software pipelining.
+
+## Latest Config (3.11ms)
+- OMP threshold: n >= 8 (optimal from curve mapping)
+- Compile flags: `-O3 -march=native -funroll-loops`
+- No num_threads() — system default threads work best for Gauss-Jordan
+
+### Combined Improvements
+| Change | Result | Delta |
+|---|---|---|
+| Baseline (n>=32) | 3.53ms | baseline |
+| Threshold n>=8 | ~3.15ms | -10% |
+| + -funroll-loops | **~3.11ms** | **-12%** total |
