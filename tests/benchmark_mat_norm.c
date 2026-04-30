@@ -14,6 +14,7 @@
 #define REPEATS_SMALL 20
 #define REPEATS_LARGE 5
 #define EPSILON 1e-6
+#define WARMUP_RUNS 3
 
 static const size_t sizes[] = {8, 16, 32, 64, 128, 256, 512, 1024};
 static const int n_sizes = sizeof(sizes) / sizeof(sizes[0]);
@@ -76,8 +77,9 @@ int main(void)
             continue;
         }
 
-        /* Warmup */
-        mat_norm_l2(&a);
+        /* Warmup runs to stabilize CPU frequency and cache */
+        for (int w = 0; w < WARMUP_RUNS; w++)
+            mat_norm_l2(&a);
 
         struct timespec ts, te;
         clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -85,8 +87,7 @@ int main(void)
             mat_norm_l2(&a);
         clock_gettime(CLOCK_MONOTONIC, &te);
 
-        double total_ms = clock_ms(&ts, &te);
-        double avg_ms = total_ms / (double)repeats;
+        double avg_ms = clock_ms(&ts, &te) / (double)repeats;
 
         if (s == n_sizes - 1)
             primary_ms = avg_ms;
