@@ -676,7 +676,7 @@ mat_det(const Matrix *A)
                 __builtin_prefetch(src, 0, 3);
 #if defined(_OPENMP)
                 if (n - i >= 8) {
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static) num_threads(4)
                         for (size_t j = i + 1; j < n; j++) {
                                 double factor = r[j * n + i] * inv_pivot;
                                 double *__restrict__ dest = r + j * n;
