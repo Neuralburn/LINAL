@@ -563,8 +563,8 @@ mat_norm_l2(const Matrix *A)
         } else
 #endif
         {
-                /* Small matrices: simple loop + ivdep. Let compiler auto-vectorize.
-                 * Simpler code may vectorize better than manual unroll on some compilers. */
+                /* Small-medium matrices: simple loop + ivdep. Same perf as omp simd.
+                 * Simpler code, easier to maintain. */
                 #pragma GCC ivdep
                 for (size_t i = 0; i < count; i++) {
                         double val = data[i];
