@@ -8,7 +8,6 @@
 #include "linal.h"
 
 #include <math.h>
-#include <omp.h>
 #include <stdlib.h>
 #include <string.h>
 
