@@ -562,11 +562,19 @@ mat_norm_l2(const Matrix *A)
         } else
 #endif
         {
-                /* Small matrices: simple loop, overhead not worth it */
+                /* Small matrices: manual 4x unroll + ivdep. Processes 4 elements per iteration,
+                 * reducing loop overhead and giving the compiler better ILP opportunities. */
+                const double *__restrict__ p = data;
+                size_t i;
                 #pragma GCC ivdep
-                for (size_t i = 0; i < count; i++) {
-                        double val = data[i];
-                        sum += val * val;
+                for (i = 0; i + 3 < count; i += 4) {
+                        sum += p[i]     * p[i];
+                        sum += p[i + 1] * p[i + 1];
+                        sum += p[i + 2] * p[i + 2];
+                        sum += p[i + 3] * p[i + 3];
+                }
+                for (; i < count; i++) {
+                        sum += p[i] * p[i];
                 }
         }
 
