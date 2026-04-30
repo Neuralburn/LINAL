@@ -621,6 +621,7 @@ mat_trace(const Matrix *A)
         return ((t[0]+t[1])+(t[2]+t[3]))+((t[4]+t[5])+(t[6]+t[7]));
 }
 
+__attribute__((optimize("O3,unroll-loops")))
 double
 mat_det(const Matrix *A)
 {
@@ -640,12 +641,13 @@ mat_det(const Matrix *A)
         }
         memcpy(temp, A->data, n * n * sizeof(double));
 
+        double *__restrict__ r = temp;
         double det = 1.0;
         for (size_t i = 0; i < n; i++) {
                 /* Pivot selection */
                 size_t pivot = i;
                 for (size_t j = i + 1; j < n; j++) {
-                        if (fabs(temp[j * n + i]) > fabs(temp[pivot * n + i])) {
+                        if (fabs(r[j * n + i]) > fabs(r[pivot * n + i])) {
                                 pivot = j;
                         }
                 }
@@ -653,24 +655,36 @@ mat_det(const Matrix *A)
                 if (pivot != i) {
                         /* Swap rows */
                         for (size_t k = 0; k < n; k++) {
-                                double t = temp[i * n + k];
-                                temp[i * n + k] = temp[pivot * n + k];
-                                temp[pivot * n + k] = t;
+                                double t = r[i * n + k];
+                                r[i * n + k] = r[pivot * n + k];
+                                r[pivot * n + k] = t;
                         }
                         det *= -1.0;
                 }
 
-                if (fabs(temp[i * n + i]) < 1e-15) {
+                if (fabs(r[i * n + i]) < 1e-15) {
                         free(temp);
                         return 0.0;
                 }
 
-                det *= temp[i * n + i];
+                det *= r[i * n + i];
 
+                /* Elimination: compute factor once per row, then update */
+                double inv_pivot = 1.0 / r[i * n + i];
                 for (size_t j = i + 1; j < n; j++) {
-                        double factor = temp[j * n + i] / temp[i * n + i];
-                        for (size_t k = i + 1; k < n; k++) {
-                                temp[j * n + k] -= factor * temp[i * n + k];
+                        double factor = r[j * n + i] * inv_pivot;
+                        double *__restrict__ dest = r + j * n;
+                        const double *__restrict__ src = r + i * n;
+                        size_t k = i + 1;
+                        #pragma GCC ivdep
+                        for (; k + 3 < n; k += 4) {
+                                dest[k]     -= factor * src[k];
+                                dest[k + 1] -= factor * src[k + 1];
+                                dest[k + 2] -= factor * src[k + 2];
+                                dest[k + 3] -= factor * src[k + 3];
+                        }
+                        for (; k < n; k++) {
+                                dest[k] -= factor * src[k];
                         }
                 }
         }
