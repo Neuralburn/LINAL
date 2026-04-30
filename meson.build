@@ -21,6 +21,8 @@ if cc.has_argument('-fopenmp')
   )
 else
   message('OpenMP not available — serial fallback for all functions')
+  # Empty dependency so downstream code doesn't fail on macOS/clang
+  openmp_dep = declare_dependency()
 endif
 
 project_description = 'A small linear algebra Meson-based C11 library'
