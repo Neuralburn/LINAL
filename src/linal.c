@@ -695,14 +695,7 @@ mat_det(const Matrix *A)
                                                 size_t k = i + 1;
                                                 #pragma GCC ivdep
                                                 for (; k + 7 < n; k += 8) {
-                                                        r[j * n + k]     -= factor * src[k];
-                                                        r[(j + 1) * n + k] -= factor * src[k];
-                                                        r[(j + 2) * n + k] -= factor * src[k];
-                                                        r[(j + 3) * n + k] -= factor * src[k];
-                                                        r[(j + 4) * n + k] -= factor * src[k];
-                                                        r[(j + 5) * n + k] -= factor * src[k];
-                                                        r[(j + 6) * n + k] -= factor * src[k];
-                                                        r[(j + 7) * n + k] -= factor * src[k];
+                                                        r[j * n + k] -= factor * src[k];
                                                 }
                                                 for (; k < n; k++) {
                                                         r[j * n + k] -= factor * src[k];
@@ -714,14 +707,7 @@ mat_det(const Matrix *A)
                                                 size_t k = i + 1;
                                                 #pragma GCC ivdep
                                                 for (; k + 7 < n; k += 8) {
-                                                        r[j * n + k]     -= factor * src[k];
-                                                        r[(j + 1) * n + k] -= factor * src[k];
-                                                        r[(j + 2) * n + k] -= factor * src[k];
-                                                        r[(j + 3) * n + k] -= factor * src[k];
-                                                        r[(j + 4) * n + k] -= factor * src[k];
-                                                        r[(j + 5) * n + k] -= factor * src[k];
-                                                        r[(j + 6) * n + k] -= factor * src[k];
-                                                        r[(j + 7) * n + k] -= factor * src[k];
+                                                        r[j * n + k] -= factor * src[k];
                                                 }
                                                 for (; k < n; k++) {
                                                         r[j * n + k] -= factor * src[k];
