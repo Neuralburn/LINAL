@@ -403,7 +403,9 @@ mat_transpose(const Matrix m, Matrix *result)
                                                        bw * sizeof(double));
                                         }
 
-                                        /* Write transposed: sequential dest writes */
+                                        /* Write transposed: sequential dest writes.
+                                         * Explicit unroll for more ILP in strided buffer reads. */
+#pragma GCC unroll 4
                                         for (size_t bj = 0; bj < bw; bj++) {
                                                 double *dst_row =
                                                     R + (jj + bj) * rows + ii;
