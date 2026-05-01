@@ -999,7 +999,7 @@ mat_inv(const Matrix A, Matrix *result)
 #if defined(_OPENMP)
                 if (n >= 32) {
                         /* Adaptive thread count: fewer threads for smaller matrices to reduce cache contention. */
-                        int linal_omp_threads = (n <= 128) ? 4 : 8;
+                        int linal_omp_threads = (n <= 128) ? 4 : 10;
 #pragma omp parallel for num_threads(linal_omp_threads) schedule(static)
                         for (long idx = 0; idx < (long)n; idx++) {
                                 size_t i = (size_t)idx;
