@@ -939,23 +939,15 @@ mat_inv(const Matrix A, Matrix *result)
                         return -1;
                 }
 
-                /* Swap rows if needed — memcpy-based 3-way swap. */
+                /* Swap rows if needed — memcpy-based 3-way swap with alloca. */
                 if (pivot_row != col) {
                         double *row_a = aug + col * stride;
                         double *row_b = aug + pivot_row * stride;
-                        double tmp_buf[64];
                         size_t swap_bytes = stride * sizeof(double);
-                        if (swap_bytes <= sizeof(tmp_buf)) {
-                                memcpy(tmp_buf, row_a, swap_bytes);
-                                memcpy(row_a, row_b, swap_bytes);
-                                memcpy(row_b, tmp_buf, swap_bytes);
-                        } else {
-                                double *tmp = (double *)malloc(swap_bytes);
-                                memcpy(tmp, row_a, swap_bytes);
-                                memcpy(row_a, row_b, swap_bytes);
-                                memcpy(row_b, tmp, swap_bytes);
-                                free(tmp);
-                        }
+                        double *tmp = (double *)__builtin_alloca(swap_bytes);
+                        memcpy(tmp, row_a, swap_bytes);
+                        memcpy(row_a, row_b, swap_bytes);
+                        memcpy(row_b, tmp, swap_bytes);
                 }
 
                 /* Normalize pivot row.
