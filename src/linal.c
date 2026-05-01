@@ -1009,7 +1009,7 @@ mat_inv(const Matrix A, Matrix *result)
                                 size_t i = (size_t)idx;
                                 if (i == col) continue;
                                 double factor = aug[i * stride + col];
-                                double *tr = aug + i * stride;
+                                double *__restrict__ tr = aug + i * stride;
                                 tr[col] = 0.0;
 
                                 /* Left half: cols col+1..n-1. */
@@ -1031,8 +1031,12 @@ mat_inv(const Matrix A, Matrix *result)
                          * Skip cols < col (already zero) and col (set to 0). */
                         for (size_t i = 0; i < col; i++) {
                                 double factor = aug[i * stride + col];
-                                double *tr = aug + i * stride;
+                                double *__restrict__ tr = aug + i * stride;
                                 tr[col] = 0.0;
+
+                                /* Prefetch next target row for cache overlap. */
+                                if (i + 1 < col)
+                                        __builtin_prefetch(aug + (i + 1) * stride, 1, 3);
 
                                 /* Left half: cols col+1..n-1 — 8x unrolled. */
                                 { size_t j = col + 1;
@@ -1074,8 +1078,12 @@ mat_inv(const Matrix A, Matrix *result)
                         }
                         for (size_t i = col + 1; i < n; i++) {
                                 double factor = aug[i * stride + col];
-                                double *tr = aug + i * stride;
+                                double *__restrict__ tr = aug + i * stride;
                                 tr[col] = 0.0;
+
+                                /* Prefetch next target row for cache overlap. */
+                                if (i + 1 < n)
+                                        __builtin_prefetch(aug + (i + 1) * stride, 1, 3);
 
                                 /* Left half: cols col+1..n-1 — 8x unrolled. */
                                 { size_t j = col + 1;
