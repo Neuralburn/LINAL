@@ -364,10 +364,16 @@ mat_transpose(const Matrix m, Matrix *result)
 
 #if defined(_OPENMP)
                 /* Parallel block transpose for large matrices.
-                 * Each thread gets its own buffer via alloca.
-                 * Threshold: 262144 elements (512×512) to amortize thread overhead. */
-                if (total >= 262144) {
-                        int linal_omp_threads = (total < 1048576) ? 4 : 8;
+                 * Each thread gets its own stack buffer.
+                 * Threshold: 65536 elements (256×256). */
+                if (total >= 65536) {
+                        int linal_omp_threads;
+                        if (total < 262144)
+                                linal_omp_threads = 2;
+                        else if (total < 1048576)
+                                linal_omp_threads = 4;
+                        else
+                                linal_omp_threads = 12;
 #pragma omp parallel for num_threads(linal_omp_threads) schedule(static)
                         for (long bii = 0; bii < (long)(rows / TRANSPOSE_BLOCK +
                                                         (rows % TRANSPOSE_BLOCK > 0));
