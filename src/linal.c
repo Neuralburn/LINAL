@@ -357,9 +357,9 @@ mat_transpose(const Matrix m, Matrix *result)
         size_t cols = m.cols;
         size_t total = rows * cols;
 
-        /* Block size: 48×48 doubles = 18KB. Fits L1, more blocks than 64 for
-         * better parallelism with 12 threads. */
-#define TRANSPOSE_BLOCK 48
+        /* Block size: 44×44 doubles = 15.5KB. Fits L1, 23.5 blocks/dimension
+         * for 1024 — fine-grained parallelism with 12 threads. */
+#define TRANSPOSE_BLOCK 44
 
         if (rows > TRANSPOSE_BLOCK && cols > TRANSPOSE_BLOCK) {
                 const double *M = m.data;
