@@ -125,6 +125,14 @@ test_numerics = executable(
   include_directories: [public_headers, generated_headers],
 )
 
+# Benchmarks
+benchmark_mat_transpose = executable(
+  'benchmark_mat_transpose',
+  files('benchmark_mat_transpose.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+
 # Run all tests
 test('mat_create', test_mat_create)
 test('mat_memory', test_mat_memory)
