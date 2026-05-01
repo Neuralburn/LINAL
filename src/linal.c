@@ -1010,7 +1010,7 @@ mat_inv(const Matrix A, Matrix *result)
                                 if (i == col) continue;
                                 double factor = aug[i * stride + col];
                                 double *tr = aug + i * stride;
-                                tr[col] = 0.0; /* Eliminate pivot column. */
+                                tr[col] = 0.0;
 
                                 /* Left half: cols col+1..n-1. */
                                 #pragma omp simd

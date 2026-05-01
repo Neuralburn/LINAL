@@ -9,7 +9,7 @@
 #include <string.h>
 #include <time.h>
 
-#define N_ITER 5
+#define N_ITER 10
 #define EPSILON 1e-4
 
 static const size_t SIZES[] = {64, 128, 256};
