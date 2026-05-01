@@ -873,6 +873,8 @@ mat_dot(const Matrix A, const Matrix B)
  * with same dimensions)
  * @return 0 on success, -1 if matrix is singular or not square
  */
+#pragma GCC push_options
+#pragma GCC target("avx2,fma")
 __attribute__((optimize("O3")))
 int
 mat_inv(const Matrix A, Matrix *result)
@@ -901,23 +903,24 @@ mat_inv(const Matrix A, Matrix *result)
         size_t n = A.rows;
         size_t stride = 2 * n;
 
-        // Create augmented matrix [A | I]
+        /* Augmented matrix [A | I] — single flat array, stride=2n.
+         * Each row is contiguous: [A_row | I_row]. */
         double *aug = (double *)malloc(n * stride * sizeof(double));
         if (!aug) {
                 fprintf(stderr, "mat_inv: Memory allocation failed\n");
                 return -1;
         }
 
-        // Initialize: copy A into left half, set identity in right half
+        /* Initialize: copy A into left half, identity in right half. */
         for (size_t i = 0; i < n; i++) {
                 memcpy(aug + i * stride, A.data + i * n, n * sizeof(double));
                 memset(aug + i * stride + n, 0, n * sizeof(double));
                 aug[i * stride + n + i] = 1.0;
         }
 
-        // Gauss-Jordan elimination
+        /* Gauss-Jordan elimination with partial pivoting. */
         for (size_t col = 0; col < n; col++) {
-                // Find pivot (largest absolute value in column)
+                /* Find pivot (largest absolute value in column below diagonal). */
                 size_t pivot_row = col;
                 double max_val = fabs(aug[col * stride + col]);
                 for (size_t i = col + 1; i < n; i++) {
@@ -928,7 +931,7 @@ mat_inv(const Matrix A, Matrix *result)
                         }
                 }
 
-                // Check for zero pivot (singular matrix)
+                /* Check for zero pivot (singular matrix). */
                 if (max_val < 1e-15) {
                         free(aug);
                         fprintf(stderr,
@@ -936,74 +939,178 @@ mat_inv(const Matrix A, Matrix *result)
                         return -1;
                 }
 
-                // Swap rows if needed — use memcpy-based 3-way swap
+                /* Swap rows if needed — memcpy-based 3-way swap with alloca. */
                 if (pivot_row != col) {
                         double *row_a = aug + col * stride;
                         double *row_b = aug + pivot_row * stride;
-                        double tmp_buf[64];
                         size_t swap_bytes = stride * sizeof(double);
-                        if (swap_bytes <= sizeof(tmp_buf)) {
-                                memcpy(tmp_buf, row_a, swap_bytes);
-                                memcpy(row_a, row_b, swap_bytes);
-                                memcpy(row_b, tmp_buf, swap_bytes);
-                        } else {
-                                double *tmp = (double *)malloc(swap_bytes);
-                                memcpy(tmp, row_a, swap_bytes);
-                                memcpy(row_a, row_b, swap_bytes);
-                                memcpy(row_b, tmp, swap_bytes);
-                                free(tmp);
-                        }
+                        double *tmp = (double *)__builtin_alloca(swap_bytes);
+                        memcpy(tmp, row_a, swap_bytes);
+                        memcpy(row_a, row_b, swap_bytes);
+                        memcpy(row_b, tmp, swap_bytes);
                 }
 
-                // Normalize pivot row — auto-vectorizable with ivdep
-                double *pivot_row_ptr = aug + col * stride;
-                double inv_pivot = 1.0 / pivot_row_ptr[col];
-                #pragma GCC ivdep
-                for (size_t j = 0; j < stride; j++) {
-                        pivot_row_ptr[j] *= inv_pivot;
+                /* Normalize pivot row.
+                 * Skip cols < col (already zero), skip col itself (becomes 1.0).
+                 * Process cols col+1..n-1 (left half) and n..2n-1 (right half). */
+                double *pr = aug + col * stride;
+                double inv_pivot = 1.0 / pr[col];
+                pr[col] = 1.0; /* Set pivot to 1 explicitly. */
+
+                /* Left half: cols col+1..n-1 — 8x unrolled. */
+                { size_t j = col + 1;
+                  #pragma GCC ivdep
+                  for (; j + 7 < n; j += 8) {
+                          pr[j]     *= inv_pivot;
+                          pr[j + 1] *= inv_pivot;
+                          pr[j + 2] *= inv_pivot;
+                          pr[j + 3] *= inv_pivot;
+                          pr[j + 4] *= inv_pivot;
+                          pr[j + 5] *= inv_pivot;
+                          pr[j + 6] *= inv_pivot;
+                          pr[j + 7] *= inv_pivot;
+                  }
+                  #pragma GCC ivdep
+                  for (; j < n; j++) {
+                          pr[j] *= inv_pivot;
+                  }
                 }
 
-                // Eliminate column in all other rows
+                /* Right half: cols n..2n-1 — 8x unrolled. */
+                { size_t j = n;
+                  #pragma GCC ivdep
+                  for (; j + 7 < stride; j += 8) {
+                          pr[j]     *= inv_pivot;
+                          pr[j + 1] *= inv_pivot;
+                          pr[j + 2] *= inv_pivot;
+                          pr[j + 3] *= inv_pivot;
+                          pr[j + 4] *= inv_pivot;
+                          pr[j + 5] *= inv_pivot;
+                          pr[j + 6] *= inv_pivot;
+                          pr[j + 7] *= inv_pivot;
+                  }
+                  #pragma GCC ivdep
+                  for (; j < stride; j++) {
+                          pr[j] *= inv_pivot;
+                  }
+                }
+
+                /* Eliminate column in all other rows. */
 #if defined(_OPENMP)
                 if (n >= 32) {
-#pragma omp parallel for schedule(static)
+                        /* Adaptive thread count: fewer threads for smaller matrices to reduce cache contention. */
+                        int linal_omp_threads = (n <= 128) ? 4 : 10;
+#pragma omp parallel for num_threads(linal_omp_threads) schedule(static)
                         for (long idx = 0; idx < (long)n; idx++) {
                                 size_t i = (size_t)idx;
                                 if (i == col) continue;
                                 double factor = aug[i * stride + col];
-                                double *target_row = aug + i * stride;
-                                #pragma omp simd
-                                for (size_t j = 0; j < stride; j++) {
-                                        target_row[j] -=
-                                            factor * pivot_row_ptr[j];
+                                double *__restrict__ tr = aug + i * stride;
+                                tr[col] = 0.0;
+
+                                /* Prefetch next row for cache overlap. */
+                                if (i + 1 < n)
+                                        __builtin_prefetch(aug + (i + 1) * stride, 1, 3);
+
+                                /* Left half: cols col+1..n-1. */
+                                #pragma omp simd safelen(32)
+                                for (size_t j = col + 1; j < n; j++) {
+                                        tr[j] -= factor * pr[j];
+                                }
+
+                                /* Right half: cols n..2n-1. */
+                                #pragma omp simd safelen(32)
+                                for (size_t j = n; j < stride; j++) {
+                                        tr[j] -= factor * pr[j];
                                 }
                         }
                 } else
 #endif
                 {
-                        // Serial: split to avoid branch per iteration
+                        /* Serial: split to avoid branch per iteration.
+                         * Skip cols < col (already zero) and col (set to 0). */
                         for (size_t i = 0; i < col; i++) {
                                 double factor = aug[i * stride + col];
-                                double *target_row = aug + i * stride;
-                                #pragma GCC ivdep
-                                for (size_t j = 0; j < stride; j++) {
-                                        target_row[j] -=
-                                            factor * pivot_row_ptr[j];
+                                double *__restrict__ tr = aug + i * stride;
+                                tr[col] = 0.0;
+
+                                /* Prefetch next target row for cache overlap. */
+                                if (i + 1 < col)
+                                        __builtin_prefetch(aug + (i + 1) * stride, 1, 3);
+
+                                /* Left half: cols col+1..n-1 — 4x unrolled. */
+                                { size_t j = col + 1;
+                                  #pragma GCC ivdep
+                                  for (; j + 3 < n; j += 4) {
+                                          tr[j]     -= factor * pr[j];
+                                          tr[j + 1] -= factor * pr[j + 1];
+                                          tr[j + 2] -= factor * pr[j + 2];
+                                          tr[j + 3] -= factor * pr[j + 3];
+                                  }
+                                  #pragma GCC ivdep
+                                  for (; j < n; j++) {
+                                          tr[j] -= factor * pr[j];
+                                  }
+                                }
+
+                                /* Right half: cols n..2n-1 — 4x unrolled. */
+                                { size_t j = n;
+                                  #pragma GCC ivdep
+                                  for (; j + 3 < stride; j += 4) {
+                                          tr[j]     -= factor * pr[j];
+                                          tr[j + 1] -= factor * pr[j + 1];
+                                          tr[j + 2] -= factor * pr[j + 2];
+                                          tr[j + 3] -= factor * pr[j + 3];
+                                  }
+                                  #pragma GCC ivdep
+                                  for (; j < stride; j++) {
+                                          tr[j] -= factor * pr[j];
+                                  }
                                 }
                         }
                         for (size_t i = col + 1; i < n; i++) {
                                 double factor = aug[i * stride + col];
-                                double *target_row = aug + i * stride;
-                                #pragma GCC ivdep
-                                for (size_t j = 0; j < stride; j++) {
-                                        target_row[j] -=
-                                            factor * pivot_row_ptr[j];
+                                double *__restrict__ tr = aug + i * stride;
+                                tr[col] = 0.0;
+
+                                /* Prefetch next target row for cache overlap. */
+                                if (i + 1 < n)
+                                        __builtin_prefetch(aug + (i + 1) * stride, 1, 3);
+
+                                /* Left half: cols col+1..n-1 — 4x unrolled. */
+                                { size_t j = col + 1;
+                                  #pragma GCC ivdep
+                                  for (; j + 3 < n; j += 4) {
+                                          tr[j]     -= factor * pr[j];
+                                          tr[j + 1] -= factor * pr[j + 1];
+                                          tr[j + 2] -= factor * pr[j + 2];
+                                          tr[j + 3] -= factor * pr[j + 3];
+                                  }
+                                  #pragma GCC ivdep
+                                  for (; j < n; j++) {
+                                          tr[j] -= factor * pr[j];
+                                  }
+                                }
+
+                                /* Right half: cols n..2n-1 — 4x unrolled. */
+                                { size_t j = n;
+                                  #pragma GCC ivdep
+                                  for (; j + 3 < stride; j += 4) {
+                                          tr[j]     -= factor * pr[j];
+                                          tr[j + 1] -= factor * pr[j + 1];
+                                          tr[j + 2] -= factor * pr[j + 2];
+                                          tr[j + 3] -= factor * pr[j + 3];
+                                  }
+                                  #pragma GCC ivdep
+                                  for (; j < stride; j++) {
+                                          tr[j] -= factor * pr[j];
+                                  }
                                 }
                         }
                 }
         }
 
-        // Extract inverse from right half — use memcpy per row
+        /* Extract inverse from right half — memcpy per row. */
         for (size_t i = 0; i < n; i++) {
                 memcpy(result->data + i * n, aug + i * stride + n,
                        n * sizeof(double));
@@ -1012,3 +1119,4 @@ mat_inv(const Matrix A, Matrix *result)
         free(aug);
         return 0;
 }
+#pragma GCC pop_options
