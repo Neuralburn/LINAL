@@ -328,6 +328,8 @@ mat_scale(const Matrix m, double scalar, Matrix *result)
  * dimensions m.cols x m.rows)
  * @return 0 on success, -1 if input is invalid or dimensions mismatch
  */
+#pragma GCC push_options
+#pragma GCC target("avx2,fma")
 __attribute__((optimize("O3")))
 int
 mat_transpose(const Matrix m, Matrix *result)
@@ -355,8 +357,9 @@ mat_transpose(const Matrix m, Matrix *result)
         size_t cols = m.cols;
         size_t total = rows * cols;
 
-        /* Block size tuned for L1 cache. 64×64 doubles = 32KB. */
-#define TRANSPOSE_BLOCK 64
+        /* Block size: 48×48 doubles = 18KB. Fits L1, more blocks than 64 for
+         * better parallelism with 12 threads. */
+#define TRANSPOSE_BLOCK 48
 
         if (rows > TRANSPOSE_BLOCK && cols > TRANSPOSE_BLOCK) {
                 const double *M = m.data;
@@ -465,6 +468,7 @@ mat_transpose(const Matrix m, Matrix *result)
 
         return 0;
 }
+#pragma GCC pop_options
 
 /**
  * @brief Subtract two matrices element-wise (A - B).
