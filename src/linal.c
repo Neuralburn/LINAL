@@ -1007,13 +1007,13 @@ mat_inv(const Matrix A, Matrix *result)
                                 tr[col] = 0.0;
 
                                 /* Left half: cols col+1..n-1. */
-                                #pragma omp simd
+                                #pragma omp simd safelen(32)
                                 for (size_t j = col + 1; j < n; j++) {
                                         tr[j] -= factor * pr[j];
                                 }
 
                                 /* Right half: cols n..2n-1. */
-                                #pragma omp simd
+                                #pragma omp simd safelen(32)
                                 for (size_t j = n; j < stride; j++) {
                                         tr[j] -= factor * pr[j];
                                 }
