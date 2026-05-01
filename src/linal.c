@@ -353,41 +353,95 @@ mat_transpose(const Matrix m, Matrix *result)
 
         size_t rows = m.rows;
         size_t cols = m.cols;
+        size_t total = rows * cols;
 
-        /* Block size tuned for L1 cache (~32KB). 64×64 doubles ≈ 32KB. */
+        /* Block size tuned for L1 cache. 64×64 doubles = 32KB. */
 #define TRANSPOSE_BLOCK 64
 
         if (rows > TRANSPOSE_BLOCK && cols > TRANSPOSE_BLOCK) {
-                const double *M  = m.data;
-                double *R        = result->data;
-                /* Buffered block transpose: load block row-by-row (sequential reads),
-                 * then write transposed with sequential dest writes.
-                 * Block size chosen so buffer fits in L1 cache (~32KB for 64x64). */
-                double buf[TRANSPOSE_BLOCK * TRANSPOSE_BLOCK];
-                for (size_t ii = 0; ii < rows; ii += TRANSPOSE_BLOCK) {
-                        size_t i_end =
-                            (ii + TRANSPOSE_BLOCK < rows)
-                                ? ii + TRANSPOSE_BLOCK : rows;
-                        size_t bh = i_end - ii;
-                        for (size_t jj = 0; jj < cols; jj += TRANSPOSE_BLOCK) {
-                                size_t j_end = (jj + TRANSPOSE_BLOCK < cols)
-                                                   ? jj + TRANSPOSE_BLOCK
-                                                   : cols;
-                                size_t bw = j_end - jj;
+                const double *M = m.data;
+                double *R       = result->data;
 
-                                /* Load source block into buffer row-by-row */
-                                for (size_t bi = 0; bi < bh; bi++) {
-                                        const double *src = M + (ii + bi) * cols + jj;
-                                        double *dst_buf   = buf + bi * bw;
-                                        memcpy(dst_buf, src, bw * sizeof(double));
-                                }
+#if defined(_OPENMP)
+                /* Parallel block transpose for large matrices.
+                 * Each thread gets its own buffer via alloca.
+                 * Threshold: 262144 elements (512×512) to amortize thread overhead. */
+                if (total >= 262144) {
+                        int linal_omp_threads = (total < 1048576) ? 4 : 8;
+#pragma omp parallel for num_threads(linal_omp_threads) schedule(static)
+                        for (long bii = 0; bii < (long)(rows / TRANSPOSE_BLOCK +
+                                                        (rows % TRANSPOSE_BLOCK > 0));
+                             bii++) {
+                                size_t ii = (size_t)bii * TRANSPOSE_BLOCK;
+                                size_t i_end = (ii + TRANSPOSE_BLOCK < rows)
+                                                   ? ii + TRANSPOSE_BLOCK
+                                                   : rows;
+                                size_t bh = i_end - ii;
+                                double buf[TRANSPOSE_BLOCK * TRANSPOSE_BLOCK];
 
-                                /* Write transposed: outer=bj(dest row), inner=bi(dest col)
-                                 * This gives sequential writes along each dest row. */
-                                for (size_t bj = 0; bj < bw; bj++) {
-                                        double *dst_row = R + (jj + bj) * rows + ii;
+                                for (size_t jj = 0; jj < cols;
+                                     jj += TRANSPOSE_BLOCK) {
+                                        size_t j_end =
+                                            (jj + TRANSPOSE_BLOCK < cols)
+                                                ? jj + TRANSPOSE_BLOCK
+                                                : cols;
+                                        size_t bw = j_end - jj;
+
+                                        /* Load source block row-by-row (sequential) */
                                         for (size_t bi = 0; bi < bh; bi++) {
-                                                dst_row[bi] = buf[bi * bw + bj];
+                                                memcpy(buf + bi * bw,
+                                                       M + (ii + bi) * cols + jj,
+                                                       bw * sizeof(double));
+                                        }
+
+                                        /* Write transposed: sequential dest writes */
+                                        for (size_t bj = 0; bj < bw; bj++) {
+                                                double *dst_row =
+                                                    R + (jj + bj) * rows + ii;
+                                                for (size_t bi = 0; bi < bh;
+                                                     bi++) {
+                                                        dst_row[bi] =
+                                                            buf[bi * bw + bj];
+                                                }
+                                        }
+                                }
+                        }
+                } else
+#endif
+                {
+                        /* Serial: same buffered block transpose */
+                        double buf[TRANSPOSE_BLOCK * TRANSPOSE_BLOCK];
+                        for (size_t ii = 0; ii < rows;
+                             ii += TRANSPOSE_BLOCK) {
+                                size_t i_end =
+                                    (ii + TRANSPOSE_BLOCK < rows)
+                                        ? ii + TRANSPOSE_BLOCK
+                                        : rows;
+                                size_t bh = i_end - ii;
+                                for (size_t jj = 0; jj < cols;
+                                     jj += TRANSPOSE_BLOCK) {
+                                        size_t j_end =
+                                            (jj + TRANSPOSE_BLOCK < cols)
+                                                ? jj + TRANSPOSE_BLOCK
+                                                : cols;
+                                        size_t bw = j_end - jj;
+
+                                        /* Load source block row-by-row (sequential) */
+                                        for (size_t bi = 0; bi < bh; bi++) {
+                                                memcpy(buf + bi * bw,
+                                                       M + (ii + bi) * cols + jj,
+                                                       bw * sizeof(double));
+                                        }
+
+                                        /* Write transposed: sequential dest writes */
+                                        for (size_t bj = 0; bj < bw; bj++) {
+                                                double *dst_row =
+                                                    R + (jj + bj) * rows + ii;
+                                                for (size_t bi = 0; bi < bh;
+                                                     bi++) {
+                                                        dst_row[bi] =
+                                                            buf[bi * bw + bj];
+                                                }
                                         }
                                 }
                         }
