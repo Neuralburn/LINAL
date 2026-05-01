@@ -873,6 +873,8 @@ mat_dot(const Matrix A, const Matrix B)
  * with same dimensions)
  * @return 0 on success, -1 if matrix is singular or not square
  */
+#pragma GCC push_options
+#pragma GCC target("avx2,fma")
 __attribute__((optimize("O3")))
 int
 mat_inv(const Matrix A, Matrix *result)
@@ -1135,3 +1137,4 @@ mat_inv(const Matrix A, Matrix *result)
         free(aug);
         return 0;
 }
+#pragma GCC pop_options
