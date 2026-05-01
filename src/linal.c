@@ -1008,6 +1008,10 @@ mat_inv(const Matrix A, Matrix *result)
                                 double *__restrict__ tr = aug + i * stride;
                                 tr[col] = 0.0;
 
+                                /* Prefetch next row for cache overlap. */
+                                if (i + 1 < n)
+                                        __builtin_prefetch(aug + (i + 1) * stride, 1, 3);
+
                                 /* Left half: cols col+1..n-1. */
                                 #pragma omp simd safelen(32)
                                 for (size_t j = col + 1; j < n; j++) {
