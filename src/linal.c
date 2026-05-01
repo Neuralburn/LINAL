@@ -998,7 +998,9 @@ mat_inv(const Matrix A, Matrix *result)
                 /* Eliminate column in all other rows. */
 #if defined(_OPENMP)
                 if (n >= 32) {
-#pragma omp parallel for num_threads(8) schedule(static)
+                        /* Adaptive thread count: fewer threads for smaller matrices to reduce cache contention. */
+                        int linal_omp_threads = (n <= 128) ? 4 : 8;
+#pragma omp parallel for num_threads(linal_omp_threads) schedule(static)
                         for (long idx = 0; idx < (long)n; idx++) {
                                 size_t i = (size_t)idx;
                                 if (i == col) continue;
