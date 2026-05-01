@@ -24,7 +24,7 @@ fi
 BENCH="$BUILD_DIR/_bench_mat_inv"
 gcc -O2 -std=c11 -I include \
     .autoresearch/bench_mat_inv.c \
-    build/src/liblinal.a -lm -fopenmp -lgomp \
+    build/liblinal.a -lm -fopenmp -lgomp \
     -o "$BENCH" 2>/dev/null || { echo "FAIL: bench compile"; exit 1; }
 
 # Run benchmark — outputs METRIC lines
