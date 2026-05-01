@@ -1038,18 +1038,14 @@ mat_inv(const Matrix A, Matrix *result)
                                 if (i + 1 < col)
                                         __builtin_prefetch(aug + (i + 1) * stride, 1, 3);
 
-                                /* Left half: cols col+1..n-1 — 8x unrolled. */
+                                /* Left half: cols col+1..n-1 — 4x unrolled. */
                                 { size_t j = col + 1;
                                   #pragma GCC ivdep
-                                  for (; j + 7 < n; j += 8) {
+                                  for (; j + 3 < n; j += 4) {
                                           tr[j]     -= factor * pr[j];
                                           tr[j + 1] -= factor * pr[j + 1];
                                           tr[j + 2] -= factor * pr[j + 2];
                                           tr[j + 3] -= factor * pr[j + 3];
-                                          tr[j + 4] -= factor * pr[j + 4];
-                                          tr[j + 5] -= factor * pr[j + 5];
-                                          tr[j + 6] -= factor * pr[j + 6];
-                                          tr[j + 7] -= factor * pr[j + 7];
                                   }
                                   #pragma GCC ivdep
                                   for (; j < n; j++) {
@@ -1057,18 +1053,14 @@ mat_inv(const Matrix A, Matrix *result)
                                   }
                                 }
 
-                                /* Right half: cols n..2n-1 — 8x unrolled. */
+                                /* Right half: cols n..2n-1 — 4x unrolled. */
                                 { size_t j = n;
                                   #pragma GCC ivdep
-                                  for (; j + 7 < stride; j += 8) {
+                                  for (; j + 3 < stride; j += 4) {
                                           tr[j]     -= factor * pr[j];
                                           tr[j + 1] -= factor * pr[j + 1];
                                           tr[j + 2] -= factor * pr[j + 2];
                                           tr[j + 3] -= factor * pr[j + 3];
-                                          tr[j + 4] -= factor * pr[j + 4];
-                                          tr[j + 5] -= factor * pr[j + 5];
-                                          tr[j + 6] -= factor * pr[j + 6];
-                                          tr[j + 7] -= factor * pr[j + 7];
                                   }
                                   #pragma GCC ivdep
                                   for (; j < stride; j++) {
@@ -1085,18 +1077,14 @@ mat_inv(const Matrix A, Matrix *result)
                                 if (i + 1 < n)
                                         __builtin_prefetch(aug + (i + 1) * stride, 1, 3);
 
-                                /* Left half: cols col+1..n-1 — 8x unrolled. */
+                                /* Left half: cols col+1..n-1 — 4x unrolled. */
                                 { size_t j = col + 1;
                                   #pragma GCC ivdep
-                                  for (; j + 7 < n; j += 8) {
+                                  for (; j + 3 < n; j += 4) {
                                           tr[j]     -= factor * pr[j];
                                           tr[j + 1] -= factor * pr[j + 1];
                                           tr[j + 2] -= factor * pr[j + 2];
                                           tr[j + 3] -= factor * pr[j + 3];
-                                          tr[j + 4] -= factor * pr[j + 4];
-                                          tr[j + 5] -= factor * pr[j + 5];
-                                          tr[j + 6] -= factor * pr[j + 6];
-                                          tr[j + 7] -= factor * pr[j + 7];
                                   }
                                   #pragma GCC ivdep
                                   for (; j < n; j++) {
@@ -1104,18 +1092,14 @@ mat_inv(const Matrix A, Matrix *result)
                                   }
                                 }
 
-                                /* Right half: cols n..2n-1 — 8x unrolled. */
+                                /* Right half: cols n..2n-1 — 4x unrolled. */
                                 { size_t j = n;
                                   #pragma GCC ivdep
-                                  for (; j + 7 < stride; j += 8) {
+                                  for (; j + 3 < stride; j += 4) {
                                           tr[j]     -= factor * pr[j];
                                           tr[j + 1] -= factor * pr[j + 1];
                                           tr[j + 2] -= factor * pr[j + 2];
                                           tr[j + 3] -= factor * pr[j + 3];
-                                          tr[j + 4] -= factor * pr[j + 4];
-                                          tr[j + 5] -= factor * pr[j + 5];
-                                          tr[j + 6] -= factor * pr[j + 6];
-                                          tr[j + 7] -= factor * pr[j + 7];
                                   }
                                   #pragma GCC ivdep
                                   for (; j < stride; j++) {
