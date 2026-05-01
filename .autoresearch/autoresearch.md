@@ -1,59 +1,54 @@
-# Autoresearch: mat_inv performance optimization
+# Autoresearch: mat_inv performance optimization — COMPLETE
 
-## Objective
-Improve runtime performance of `mat_inv` (matrix inverse via Gauss-Jordan elimination) in `src/linal.c`.
+## Final Results
+| Size | Baseline | Optimized | Improvement |
+|------|----------|-----------|-------------|
+| 64×64 | 0.68ms | 0.49ms | **-28%** |
+| 128×128 | 1.62ms | 1.12ms | **-31%** |
+| 256×256 | 3.92ms | 3.00ms | **-23.5%** |
 
-## Results
-- **Baseline**: 3.92ms (256×256), 1.62ms (128×128), 0.68ms (64×64)
-- **Best**: 3.04ms (256×256), 1.15ms (128×128), 0.51ms (64×64)
-- **Improvement**: ~22% faster across all sizes
-- **Confidence**: 4.9× noise floor
+**Confidence: 5.4× noise floor** — improvement is very likely real.
 
-## Winning Optimizations (all applied)
-1. **8x loop unrolling** on inner j-loop with `#pragma GCC ivdep` (serial path)
-2. **Skip zero columns** - left half starts at col+1 (already zeroed below diagonal)
-3. **`#pragma GCC target("avx2,fma")`** - forces AVX2 256-bit SIMD + FMA instructions
-4. **`__restrict__` pointers** on row pointers for better compiler optimization
-5. **`__builtin_prefetch`** for next target row during elimination
-6. **`__builtin_alloca`** for row swap (simpler than conditional malloc)
-7. **Explicit pivot=1.0** and **tr[col]=0.0** instead of dividing/eliminating
+## Winning Optimizations (all applied in src/linal.c)
 
-## How to Run
-`.autoresearch/autoresearch.sh` — outputs `METRIC mat_inv_ms=...`, `METRIC mat_inv_128_ms=...`, `METRIC mat_inv_64_ms=...` lines. Median of 20 iterations per size.
-
-## Files in Scope
-- `src/linal.c` — contains `mat_inv` implementation
-- `.autoresearch/bench_mat_inv.c` — standalone benchmark binary source
-- `.autoresearch/autoresearch.sh` — build + run script
-
-## What's Been Tried
-
-### Successful
-- 8x unrolled inner loops + skip zero columns: ✅ ~10-20% improvement
-- `__restrict__` + `__builtin_prefetch`: ✅ ~5-10% improvement  
-- `#pragma GCC target("avx2,fma")`: ✅ ~5-10% improvement
-- `__builtin_alloca` for row swap: ✅ neutral/slight improvement, simpler code
-
-### Failed
-- Split arrays (A_part + R_part): ❌ Cache contention between two large arrays
-- Pointer indirection for row swap: ❌ Extra indirection overhead on every access
-- Two OpenMP parallel regions: ❌ Massive fork/join overhead inside column loop
-- Lower OpenMP threshold (n>=16): ❌ No benefit, serial path not used for benchmark sizes
-- `schedule(static,1)`: ❌ Chunk overhead
-- `schedule(guided)`: ❌ Dynamic scheduling overhead catastrophic in tight loop
-- `num_threads(4)`: ❌ Too few threads for 28-thread system
-- `aligned_alloc(32, ...)`: ❌ No consistent improvement
-- `__builtin_assume_aligned(32)`: ❌ Compiler already generates optimal SIMD
-- `unroll-loops` flag: ❌ Register pressure and code bloat
-- LU decomposition: ❌ Complex to implement correctly, bugs in back substitution + permutation
-
-## Constraints
-- Tests must pass (`meson test -C build`)
-- C11 standard compliance
-- Same numerical accuracy (within existing tolerance ~1e-4)
-- No new dependencies
+1. **`#pragma GCC target("avx2,fma")`** — Forces AVX2 256-bit SIMD + FMA instructions (140 FMA ops generated)
+2. **8x loop unrolling** with `#pragma GCC ivdep` — Serial path processes 8 elements per iteration
+3. **Skip zero columns** — Left half starts at col+1 (already zeroed below diagonal)
+4. **`__restrict__` pointers** — Helps compiler optimize memory access patterns
+5. **`__builtin_prefetch`** — Prefetches next target row during elimination
+6. **`#pragma omp simd safelen(32)`** — Hints 32-byte vectorization width for OpenMP path
+7. **`__builtin_alloca`** for row swap — Simpler than conditional malloc
+8. **Explicit pivot=1.0** and **tr[col]=0.0** — Avoid redundant division/elimination
 
 ## System
 - Intel Xeon E5-2680 v4 @ 2.40GHz (Broadwell, AVX2+FMA, no AVX-512)
-- 28 threads (14 cores × 2 HT)
-- 35MB L3 cache
+- 28 threads (14 cores × 2 HT), 35MB L3 cache
+
+## What Was Tried (16 experiments)
+
+### Successful (kept)
+- 8x unrolled inner loops + skip zero columns
+- `__restrict__` + `__builtin_prefetch`
+- `#pragma GCC target("avx2,fma")`
+- `__builtin_alloca` for row swap
+- `#pragma omp simd safelen(32)`
+
+### Failed (discarded)
+- Split arrays (A_part + R_part): Cache contention
+- Pointer indirection for row swap: Indirection overhead
+- Two OpenMP parallel regions: Fork/join overhead
+- Lower OpenMP threshold: No benefit
+- `schedule(static,1)`, `schedule(guided)`: Scheduling overhead
+- `num_threads(4)`: Too few threads
+- `aligned_alloc(32, ...)`: No consistent improvement
+- `__builtin_assume_aligned(32)`: Compiler already optimal
+- `unroll-loops` flag: Register pressure
+- LU decomposition: Complex, bugs in implementation
+- `fp-contract=fast`: No improvement
+
+## Remaining Ideas (see autoresearch.ideas.md)
+- Explicit AVX2 intrinsics
+- Cache blocking for L2 fit
+- Profile-guided optimization (PGO)
+- Link-time optimization (LTO)
+- AVX-512 fallback (if available)
