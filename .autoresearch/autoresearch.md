@@ -1,50 +1,59 @@
 # Autoresearch: mat_inv performance optimization
 
 ## Objective
-Improve runtime performance of `mat_inv` (matrix inverse via Gauss-Jordan elimination) in `src/linal.c`. The function works on square matrices of any size and uses an augmented matrix [A | I]. Primary workload is medium-to-large matrices (64x64 to 256x256) where O(n^3) dominates.
+Improve runtime performance of `mat_inv` (matrix inverse via Gauss-Jordan elimination) in `src/linal.c`.
 
-## Metrics
-- **Primary**: `mat_inv_ms` (ms, lower is better) — average time for mat_inv on 256x256 matrix
-- **Secondary**: `mat_inv_128_ms` — avg time for 128x128; `mat_inv_64_ms` — avg time for 64x64
+## Results
+- **Baseline**: 3.92ms (256×256), 1.62ms (128×128), 0.68ms (64×64)
+- **Best**: 3.04ms (256×256), 1.15ms (128×128), 0.51ms (64×64)
+- **Improvement**: ~22% faster across all sizes
+- **Confidence**: 4.9× noise floor
+
+## Winning Optimizations (all applied)
+1. **8x loop unrolling** on inner j-loop with `#pragma GCC ivdep` (serial path)
+2. **Skip zero columns** - left half starts at col+1 (already zeroed below diagonal)
+3. **`#pragma GCC target("avx2,fma")`** - forces AVX2 256-bit SIMD + FMA instructions
+4. **`__restrict__` pointers** on row pointers for better compiler optimization
+5. **`__builtin_prefetch`** for next target row during elimination
+6. **`__builtin_alloca`** for row swap (simpler than conditional malloc)
+7. **Explicit pivot=1.0** and **tr[col]=0.0** instead of dividing/eliminating
 
 ## How to Run
-`.autoresearch/autoresearch.sh` — outputs `METRIC mat_inv_ms=...`, `METRIC mat_inv_128_ms=...`, `METRIC mat_inv_64_ms=...` lines. Runs median of 5 iterations per size for stability.
+`.autoresearch/autoresearch.sh` — outputs `METRIC mat_inv_ms=...`, `METRIC mat_inv_128_ms=...`, `METRIC mat_inv_64_ms=...` lines. Median of 20 iterations per size.
 
 ## Files in Scope
-- `src/linal.c` — contains `mat_inv` implementation (lines ~790-end). May also touch `mat_mul` if used internally.
+- `src/linal.c` — contains `mat_inv` implementation
 - `.autoresearch/bench_mat_inv.c` — standalone benchmark binary source
 - `.autoresearch/autoresearch.sh` — build + run script
 
-## Off Limits
-- Public API in `include/linal.h` (no signature changes)
-- Error handling contract (return codes, stderr messages)
-- Correctness: all unit tests must pass
-- No new dependencies (only C11, libm, OpenMP if available)
+## What's Been Tried
+
+### Successful
+- 8x unrolled inner loops + skip zero columns: ✅ ~10-20% improvement
+- `__restrict__` + `__builtin_prefetch`: ✅ ~5-10% improvement  
+- `#pragma GCC target("avx2,fma")`: ✅ ~5-10% improvement
+- `__builtin_alloca` for row swap: ✅ neutral/slight improvement, simpler code
+
+### Failed
+- Split arrays (A_part + R_part): ❌ Cache contention between two large arrays
+- Pointer indirection for row swap: ❌ Extra indirection overhead on every access
+- Two OpenMP parallel regions: ❌ Massive fork/join overhead inside column loop
+- Lower OpenMP threshold (n>=16): ❌ No benefit, serial path not used for benchmark sizes
+- `schedule(static,1)`: ❌ Chunk overhead
+- `schedule(guided)`: ❌ Dynamic scheduling overhead catastrophic in tight loop
+- `num_threads(4)`: ❌ Too few threads for 28-thread system
+- `aligned_alloc(32, ...)`: ❌ No consistent improvement
+- `__builtin_assume_aligned(32)`: ❌ Compiler already generates optimal SIMD
+- `unroll-loops` flag: ❌ Register pressure and code bloat
+- LU decomposition: ❌ Complex to implement correctly, bugs in back substitution + permutation
 
 ## Constraints
-- Tests must pass (`meson test -C build`) after each change
+- Tests must pass (`meson test -C build`)
 - C11 standard compliance
-- Row-major memory layout preserved
-- Same numerical accuracy (within existing tolerance ~1e-4 for large matrices)
+- Same numerical accuracy (within existing tolerance ~1e-4)
+- No new dependencies
 
-## Current Implementation Analysis
-The current `mat_inv` uses Gauss-Jordan elimination with:
-1. Augmented matrix [A | I] in single flat array, stride=2n
-2. Partial pivoting (largest abs value in column below diagonal)
-3. Row normalization (divide pivot row by pivot element)
-4. Column elimination across all other rows
-5. OpenMP parallelization for n >= 32 on the elimination loop
-6. `#pragma GCC ivdep` for auto-vectorization of inner loops
-7. memcpy-based row swap and extraction
-
-## Optimization Opportunities
-- Separate augmented matrix into two arrays (A_part, I_part) to halve stride and improve cache utilization during normalization/elimination
-- Skip column already processed in elimination (j starts from col+1 for A part since below-diagonal is zeroed; but right side needs full sweep)
-- Loop unrolling of inner j-loop (like mat_mul does with 8x unroll)
-- Better OpenMP parallelization strategy (taskloop vs parallel for, lower threshold)
-- Use `__restrict__` pointers throughout
-- Block/tiling optimization for very large matrices to fit in L1/L2 cache
-- Avoid redundant work: after normalization pivot_row[col]=1.0, so elimination at j=col is just setting aug[i*stride+col] = 0 (or skipping it)
-
-## What's Been Tried
-*(Updated after each experiment)*
+## System
+- Intel Xeon E5-2680 v4 @ 2.40GHz (Broadwell, AVX2+FMA, no AVX-512)
+- 28 threads (14 cores × 2 HT)
+- 35MB L3 cache
