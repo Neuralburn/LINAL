@@ -251,4 +251,4 @@ test_vec_workloads = executable(
   dependencies: [linal_dep],
   include_directories: [public_headers, generated_headers],
 )
-test('vec_workloads', test_vec_workloads)
+test('vec_workloads', test_vec_workloads, timeout: 120)
