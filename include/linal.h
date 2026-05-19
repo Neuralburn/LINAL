@@ -48,6 +48,19 @@ typedef struct {
         size_t cols;  /**< Number of columns in the matrix */
 } Matrix;
 
+/**
+ * @struct Vector
+ * @brief Represents a 1D vector.
+ *
+ * The data buffer is allocated dynamically and must be freed manually
+ * after the vector is no longer needed. Use vec_create() to initialize
+ * and vec_free() to release memory safely.
+ */
+typedef struct {
+        double *data; /**< Pointer to contiguous array of elements */
+        size_t size;  /**< Number of elements in the vector */
+} Vector;
+
 /* ================ MACROS ================================================== */
 
 /* ================ GLOBAL VARIABLES ======================================== */
@@ -285,6 +298,203 @@ int mat_inv(const Matrix A, Matrix *result);
  * @return The dot product as a double value, or NaN if dimensions mismatch
  */
 double mat_dot(const Matrix A, const Matrix B);
+
+/**
+ * @brief Create a new vector with specified size, initializing data to zero.
+ * @param size Number of elements to create
+ * @return New Vector struct initialized with zeros
+ */
+Vector vec_create(size_t size);
+
+/**
+ * @brief Free the memory associated with a vector.
+ * @param v Pointer to Vector whose data field shall be freed
+ */
+void vec_free(Vector *v);
+
+/**
+ * @brief Add two vectors element-wise.
+ *
+ * Computes the element-wise sum of two vectors:
+ * @f$ C = A + B @f$
+ * @f$ C_i = A_i + B_i @f$
+ *
+ * @param a First operand
+ * @param b Second operand
+ * @param result Output vector containing the sum (must not alias a or b)
+ * @return 0 on success, -1 on dimension mismatch or invalid pointers
+ */
+int vec_add(const Vector a, const Vector b, Vector *__restrict__ result);
+
+/**
+ * @brief Subtract two vectors element-wise.
+ *
+ * Computes the element-wise difference of two vectors:
+ * @f$ C = A - B @f$
+ * @f$ C_i = A_i - B_i @f$
+ *
+ * @param a First operand (minuend)
+ * @param b Second operand (subtrahend)
+ * @param result Output vector containing the difference (must not alias a or b)
+ * @return 0 on success, -1 on dimension mismatch or invalid result
+ */
+int vec_sub(const Vector a, const Vector b, Vector *__restrict__ result);
+
+/**
+ * @brief Compute the dot product (inner product) of two vectors.
+ *
+ * Computes the sum of element-wise products:
+ * @f$\langle A, B \rangle = \sum_{i=1}^{n} a_i b_i@f$
+ *
+ * Properties:
+ * - Commutative: \f$\langle A, B \rangle = \langle B, A \rangle@f$
+ * - Linear: \f$\langle \alpha A + \beta C, B \rangle = \alpha \langle A, B
+ * \rangle + \beta \langle C, B \rangle@f$
+ * - Positive definite: \f$\langle A, A \rangle \geq 0@f$ with equality iff A
+ * = 0
+ * - Cauchy-Schwarz: \f$|\langle A, B \rangle| \leq \|A\|_2 \|B\|_2@f$
+ *
+ * Requires both vectors to have identical size.
+ *
+ * @param a First operand
+ * @param b Second operand
+ * @return The dot product as a double value, or NaN if dimensions mismatch
+ */
+double vec_dot(const Vector a, const Vector b);
+
+/**
+ * @brief Scale a vector by a scalar factor.
+ *
+ * Multiplies each element of the vector by a scalar value:
+ * @f$ B = \alpha \times A @f$
+ * @f$ B_i = \alpha \times A_i @f$
+ *
+ * @param v Input vector to scale
+ * @param scalar Scalar multiplier
+ * @param result Output vector containing the scaled values (must not alias v)
+ * @return 0 on success, -1 if input is invalid
+ */
+int vec_scale(const Vector v, double scalar, Vector *__restrict__ result);
+
+/**
+ * @brief Compute the L2 (Euclidean) norm of a vector.
+ *
+ * The Euclidean norm is defined as:
+ * @f[\|A\|_2 = \sqrt{\sum_{i=1}^{n} |a_i|^2}@f]
+ *
+ * @param v The input vector (must not be NULL)
+ * @return The L2 norm as a double value, or NaN if v is NULL or invalid
+ */
+double vec_norm_l2(const Vector v);
+
+/**
+ * @brief Get element at specified index.
+ *
+ * @param v Vector to access
+ * @param index Element index (0-based)
+ * @return Element value on success, NaN if index is out of bounds
+ */
+double vec_get(const Vector v, size_t index);
+
+/**
+ * @brief Set element at specified index.
+ *
+ * @param v Vector to modify
+ * @param index Element index (0-based)
+ * @param value Value to set
+ * @return 0 on success, -1 if index is out of bounds
+ */
+int vec_set(Vector *v, size_t index, double value);
+
+/**
+ * @brief Deep copy the source vector into destination vector.
+ *
+ * @param src Source vector to copy from
+ * @param dest Pointer to destination vector (must have matching size)
+ * @return 0 on success, -1 if dimensions mismatch or invalid pointers
+ */
+int vec_copy(const Vector src, Vector *__restrict__ dest);
+
+#if LINAL_ENABLE_DEBUG_PRINT
+/**
+ * @brief Print vector contents to stdout with label header.
+ *
+ * @param label Optional string identifier to print before vector
+ * @param v Vector to display
+ */
+void vec_print(const char *label, const Vector v);
+#endif
+
+/**
+ * @brief Normalize a vector to unit length.
+ *
+ * Computes the unit vector in the same direction as the input:
+ * @f$\hat{v} = \frac{v}{\|v\|_2}@f$
+ *
+ * Returns -1 if the vector has zero length (norm is 0), as normalization
+ * is undefined for zero vectors.
+ *
+ * @param v Input vector
+ * @param result Output vector containing the normalized values (must be
+ * pre-allocated with matching size)
+ * @return 0 on success, -1 if v is zero-length or parameters are invalid
+ */
+int vec_normalize(const Vector v, Vector *__restrict__ result);
+
+/**
+ * @brief Compute the Euclidean distance between two vectors.
+ *
+ * The Euclidean distance is defined as:
+ * @f$d(a, b) = \|a - b\|_2 = \sqrt{\sum_{i=1}^{n} (a_i - b_i)^2}@f$
+ *
+ * @param a First vector
+ * @param b Second vector
+ * @return Distance as a double value, or NaN if sizes differ or data is NULL
+ */
+double vec_distance(const Vector a, const Vector b);
+
+/**
+ * @brief Compute the angle between two vectors in radians.
+ *
+ * The angle is defined as:
+ * @f$\theta = \arccos\left(\frac{\langle a, b \rangle}{\|a\|_2
+ * \|b\|_2}\right)@f$
+ *
+ * Returns NaN if sizes differ, either vector is zero-length, or the cosine
+ * value is outside [-1, 1] due to floating-point rounding.
+ *
+ * @param a First vector
+ * @param b Second vector
+ * @return Angle in radians in [0, π], or NaN on error
+ */
+double vec_angle(const Vector a, const Vector b);
+
+/**
+ * @brief Compute the element-wise (Hadamard) product of two vectors.
+ *
+ * Computes the element-wise product:
+ * @f$ C_i = A_i \times B_i @f$
+ *
+ * @param a First operand
+ * @param b Second operand
+ * @param result Output vector containing the element-wise product (must be
+ * pre-allocated with matching size)
+ * @return 0 on success, -1 if sizes differ or parameters are invalid
+ */
+int vec_hadamard(const Vector a, const Vector b, Vector *__restrict__ result);
+
+/**
+ * @brief Compute the element-wise absolute value of a vector.
+ *
+ * Computes:
+ * @f$ C_i = |A_i| @f$
+ *
+ * @param v Input vector
+ * @param result Output vector containing the absolute values (must be
+ * pre-allocated with matching size)
+ * @return 0 on success, -1 if v is invalid or parameters mismatch
+ */
+int vec_abs(const Vector v, Vector *__restrict__ result);
 
 #ifdef __cplusplus
 }
