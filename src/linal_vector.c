@@ -3,11 +3,17 @@
  * @brief Implementation of Vector operations for LINAL.
  */
 
+#define _GNU_SOURCE
+
 #include "linal.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef __linux__
+#include <sys/mman.h>
+#endif
 
 /* ============ Internal helpers ========================================== */
 
@@ -135,7 +141,14 @@ vec_sub(const Vector a, const Vector b, Vector *result)
 
 /**
  * @brief Compute the dot product of two vectors.
+ *
+ * Uses AVX2+FMA target for SIMD vectorization, multiple accumulators with
+ * pairwise summation for numerical precision, and OpenMP parallel reduction
+ * with explicit chunking for large vectors.
  */
+#pragma GCC push_options
+#pragma GCC target("avx2,fma")
+__attribute__((optimize("O3")))
 double
 vec_dot(const Vector a, const Vector b)
 {
@@ -143,13 +156,56 @@ vec_dot(const Vector a, const Vector b)
                 return NAN;
         }
 
+        const double *__restrict__ A = a.data;
+        const double *__restrict__ B = b.data;
+        size_t count = a.size;
         double sum = 0.0;
-        for (size_t i = 0; i < a.size; i++) {
-                sum += a.data[i] * b.data[i];
+
+#if defined(_OPENMP)
+        /* Parallel reduction for large vectors.
+         * Explicit data sharing clauses help compiler optimize access patterns.
+         * 8 threads = 8 physical cores on target hardware (optimal for MLB). */
+        if (count >= 262144) {
+#ifdef __linux__
+                madvise((void *)A, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
+                madvise((void *)B, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
+#endif
+#pragma omp parallel for num_threads(8) schedule(static, 65536) \
+                default(none) firstprivate(A, B, count) reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        sum += A[i] * B[i];
+                }
+                return sum;
+        }
+#endif
+
+        /* 8 accumulators with pairwise summation tree for ILP + precision */
+        double s[8];
+        for (int k = 0; k < 8; k++)
+                s[k] = 0.0;
+
+        #pragma GCC ivdep
+        for (size_t i = 0; i + 7 < count; i += 8) {
+                s[0] += A[i]     * B[i];
+                s[1] += A[i + 1] * B[i + 1];
+                s[2] += A[i + 2] * B[i + 2];
+                s[3] += A[i + 3] * B[i + 3];
+                s[4] += A[i + 4] * B[i + 4];
+                s[5] += A[i + 5] * B[i + 5];
+                s[6] += A[i + 6] * B[i + 6];
+                s[7] += A[i + 7] * B[i + 7];
+                /* Prefetch next cache line every 4 iterations */
+                if ((i >> 5) & 1)
+                        __builtin_prefetch(&A[i + 256], 0, 1);
+        }
+        for (size_t i = count & ~7; i < count; i++) {
+                s[0] += A[i] * B[i];
         }
 
-        return sum;
+        /* Pairwise summation tree */
+        return ((s[0]+s[1])+(s[2]+s[3]))+((s[4]+s[5])+(s[6]+s[7]));
 }
+#pragma GCC pop_options
 
 /**
  * @brief Scale a vector by a scalar factor.
