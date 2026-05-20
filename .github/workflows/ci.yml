@@ -43,6 +43,30 @@ jobs:
       - name: Test
         run: meson test -C build --verbose
 
+  static-analysis:
+    name: Static analysis (cppcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: >
+          cppcheck --enable=warning,style,performance
+          --std=c11 --error-exitcode=1
+          --suppress=missingIncludeSystem
+          --suppress=unusedStructMember
+          --suppress=unusedFunction
+          --suppress=staticFunction
+          --suppress=unreadVariable
+          --suppress=constParameterPointer
+          --suppress=syntaxError
+          --suppress=nullPointerOutOfMemory
+          --suppress=constVariable
+          src/ include/ tests/ --inline-suppr
+
   release-build:
     name: Release build
     runs-on: ubuntu-latest

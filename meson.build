@@ -50,7 +50,7 @@ generated_version_header = configure_file(
 public_headers = include_directories('include')
 generated_headers = include_directories('.')
 
-library_sources = files('src/linal.c')
+library_sources = files('src/linal.c', 'src/linal_vector.c')
 
 linal_lib = static_library(
   'linal',

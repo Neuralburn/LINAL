@@ -6,7 +6,8 @@ A lightweight, high-performance linear algebra library written in C11. Designed 
 
 ## Features
 
-- **Dense Matrix Operations**: Full support for matrix creation, destruction, copying, addition, multiplication, scaling, and transposition
+- **Dense Matrix Operations**: Full support for matrix creation, destruction, copying, addition, multiplication, scaling, transposition, inversion, and determinants
+- **Dense Vector Operations**: First-class 1-D vector type with arithmetic, dot product, L2 norm, normalization, distance, angle, and Hadamard product
 - **C11 Standard Compliance**: Strict adherence to C11 specification with portable code
 - **Row-Major Memory Layout**: Contiguous memory storage optimized for sequential access patterns
 - **Explicit Memory Management**: Safe allocation and deallocation APIs to prevent leaks
@@ -103,15 +104,22 @@ int main(void)
 
 ## API Reference
 
-### Matrix Lifecycle
+The library exposes two parallel APIs: one for 2-D `Matrix` objects (`mat_*`) and
+one for 1-D `Vector` objects (`vec_*`). Both follow the same conventions —
+results are written into pre-allocated outputs, integer-returning ops use `0`/
+`-1`, and double-returning ops return `NaN` on error.
+
+### Matrix API
+
+#### Lifecycle
 
 ```c
 Matrix mat_create(size_t r, size_t c);
-void mat_free(Matrix *m);
-int mat_copy(const Matrix src, Matrix *dest);
+void   mat_free(Matrix *m);
+int    mat_copy(const Matrix src, Matrix *dest);
 ```
 
-### Arithmetic Operations
+#### Arithmetic Operations
 
 ```c
 int mat_add(const Matrix a, const Matrix b, Matrix *result);
@@ -122,7 +130,7 @@ int mat_transpose(const Matrix m, Matrix *result);
 int mat_inv(const Matrix A, Matrix *result);
 ```
 
-### Scalar Queries
+#### Scalar Queries
 
 ```c
 double mat_norm_l2(const Matrix *A);
@@ -131,23 +139,71 @@ double mat_det(const Matrix *A);
 double mat_dot(const Matrix A, const Matrix B);
 ```
 
-### Element Access
+#### Element Access
 
 ```c
 double mat_get(const Matrix m, size_t row, size_t col);
-int mat_set(Matrix *m, size_t row, size_t col, double value);
+int    mat_set(Matrix *m, size_t row, size_t col, double value);
 ```
 
-### Construction Helpers
+#### Construction Helpers
 
 ```c
 Matrix mat_identity(size_t n);
 ```
 
-### Debug Utilities
+#### Debug Utilities
 
 ```c
 void mat_print(const char *label, const Matrix m);
+```
+
+### Vector API
+
+#### Lifecycle
+
+```c
+Vector vec_create(size_t size);
+void   vec_free(Vector *v);
+int    vec_copy(const Vector src, Vector *dest);
+```
+
+#### Arithmetic Operations
+
+```c
+int vec_add(const Vector a, const Vector b, Vector *result);
+int vec_sub(const Vector a, const Vector b, Vector *result);
+int vec_scale(const Vector v, double scalar, Vector *result);
+int vec_hadamard(const Vector a, const Vector b, Vector *result);
+int vec_abs(const Vector v, Vector *result);
+```
+
+#### Scalar Queries
+
+```c
+double vec_dot(const Vector a, const Vector b);
+double vec_norm_l2(const Vector v);
+double vec_distance(const Vector a, const Vector b);
+double vec_angle(const Vector a, const Vector b);
+```
+
+#### Geometric Operations
+
+```c
+int vec_normalize(const Vector v, Vector *result);
+```
+
+#### Element Access
+
+```c
+double vec_get(const Vector v, size_t index);
+int    vec_set(Vector *v, size_t index, double value);
+```
+
+#### Debug Utilities
+
+```c
+void vec_print(const char *label, const Vector v);
 ```
 
 For detailed documentation, see the Doxygen comments in `include/linal.h`.
@@ -161,11 +217,12 @@ For detailed documentation, see the Doxygen comments in `include/linal.h`.
 
 ## Notes
 
-| Topic                    | Note                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------ |
-| **Memory Layout**        | Matrices use row-major contiguous memory layout for cache-friendly access patterns   |
-| **Thread Safety**        | API is thread-safe at the level of individual function calls                         |
-| **Error Handling**       | `int`-returning functions use 0/−1; `double`-returning functions return NaN on error |
-| **Data Types**           | All matrix elements are stored as `double` for numerical precision                   |
-| **Dimension Validation** | All arithmetic operations validate dimensions and return error codes on mismatch     |
-| **Memory Ownership**     | Users are responsible for freeing matrices via `mat_free()` to prevent leaks         |
+| Topic                    | Note                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------- |
+| **Memory Layout**        | Matrices use row-major contiguous storage; vectors are contiguous `double` arrays             |
+| **Thread Safety**        | API is thread-safe at the level of individual function calls                                  |
+| **Error Handling**       | `int`-returning functions use 0/−1; `double`-returning functions return NaN on error          |
+| **Data Types**           | All matrix and vector elements are stored as `double` for numerical precision                 |
+| **Dimension Validation** | All arithmetic operations validate dimensions and return error codes on mismatch              |
+| **Aliasing**             | Binary ops reject `result` aliasing either input; callers must pass a distinct output buffer  |
+| **Memory Ownership**     | Users are responsible for freeing matrices/vectors via `mat_free()` / `vec_free()`            |
