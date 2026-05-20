@@ -160,16 +160,15 @@ vec_dot(const Vector a, const Vector b)
 
 #if defined(_OPENMP)
         /* Parallel reduction for large vectors.
-         * GCC doesn't allow simd + num_threads on same pragma, so we use
-         * parallel for with reduction. Compiler auto-vectorizes the inner loop.
+         * Explicit data sharing clauses help compiler optimize access patterns.
          * 8 threads = 8 physical cores on target hardware (optimal for MLB). */
         if (count >= 262144) {
 #ifdef __linux__
-                /* Hint sequential access pattern to kernel for better page prefetching */
                 madvise((void *)A, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
                 madvise((void *)B, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
 #endif
-#pragma omp parallel for num_threads(8) reduction(+:sum)
+#pragma omp parallel for num_threads(8) \
+                default(none) firstprivate(A, B, count) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
                         sum += A[i] * B[i];
                 }
