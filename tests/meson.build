@@ -152,3 +152,103 @@ test('stress', test_stress)
 test('property', test_property)
 test('workloads', test_workloads, timeout: 120)
 test('numerics', test_numerics)
+
+test_vec_create = executable(
+  'test_vec_create',
+  files('test_vec_create.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test_vec_add = executable(
+  'test_vec_add',
+  files('test_vec_add.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test_vec_sub = executable(
+  'test_vec_sub',
+  files('test_vec_sub.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test_vec_dot = executable(
+  'test_vec_dot',
+  files('test_vec_dot.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test_vec_scale = executable(
+  'test_vec_scale',
+  files('test_vec_scale.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test_vec_norm = executable(
+  'test_vec_norm',
+  files('test_vec_norm.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+
+test('vec_create', test_vec_create)
+test('vec_add', test_vec_add)
+test('vec_sub', test_vec_sub)
+test('vec_dot', test_vec_dot)
+test('vec_scale', test_vec_scale)
+test('vec_norm', test_vec_norm)
+test_vec_access = executable(
+  'test_vec_access',
+  files('test_vec_access.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test_vec_copy = executable(
+  'test_vec_copy',
+  files('test_vec_copy.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test_vec_print = executable(
+  'test_vec_print',
+  files('test_vec_print.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test('vec_access', test_vec_access)
+test('vec_copy', test_vec_copy)
+test('vec_print', test_vec_print)
+test_vec_geom = executable(
+  'test_vec_geom',
+  files('test_vec_geom.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test('vec_geom', test_vec_geom)
+test_vec_ml = executable(
+  'test_vec_ml',
+  files('test_vec_ml.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test('vec_ml', test_vec_ml)
+test_vec_property = executable(
+  'test_vec_property',
+  files('test_vec_property.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test('vec_property', test_vec_property)
+test_vec_stress = executable(
+  'test_vec_stress',
+  files('test_vec_stress.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test('vec_stress', test_vec_stress)
+test_vec_workloads = executable(
+  'test_vec_workloads',
+  files('test_vec_workloads.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test('vec_workloads', test_vec_workloads, timeout: 120)
