@@ -13,11 +13,17 @@ TEST_CASE(test_mat_vec_mul_simple)
 
         /* m = [1, 2, 3]
          *     [4, 5, 6] */
-        m.data[0] = 1.0; m.data[1] = 2.0; m.data[2] = 3.0;
-        m.data[3] = 4.0; m.data[4] = 5.0; m.data[5] = 6.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
+        m.data[4] = 5.0;
+        m.data[5] = 6.0;
 
         /* v = [7, 8, 9] */
-        v.data[0] = 7.0; v.data[1] = 8.0; v.data[2] = 9.0;
+        v.data[0] = 7.0;
+        v.data[1] = 8.0;
+        v.data[2] = 9.0;
 
         /* res = m * v = [1*7 + 2*8 + 3*9, 4*7 + 5*8 + 6*9]
          *              = [7 + 16 + 27, 28 + 40 + 54]
@@ -39,12 +45,17 @@ TEST_CASE(test_vec_mat_mul_simple)
         Vector res = vec_create(3);
 
         /* v = [1, 2] */
-        v.data[0] = 1.0; v.data[1] = 2.0;
+        v.data[0] = 1.0;
+        v.data[1] = 2.0;
 
         /* m = [1, 2, 3]
          *     [4, 5, 6] */
-        m.data[0] = 1.0; m.data[1] = 2.0; m.data[2] = 3.0;
-        m.data[3] = 4.0; m.data[4] = 5.0; m.data[5] = 6.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
+        m.data[4] = 5.0;
+        m.data[5] = 6.0;
 
         /* res = v^T * m = [1*1 + 2*4, 1*2 + 2*5, 1*3 + 2*6]
          *                = [1 + 8, 2 + 10, 3 + 12]
@@ -69,14 +80,18 @@ TEST_CASE(test_mat_vec_add_simple)
 
         /* m = [1, 2]
          *     [3, 4] */
-        m.data[0] = 1.0; m.data[1] = 2.0;
-        m.data[2] = 3.0; m.data[3] = 4.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
 
         /* v = [5, 6] */
-        v.data[0] = 5.0; v.data[1] = 6.0;
+        v.data[0] = 5.0;
+        v.data[1] = 6.0;
 
         /* b = [7, 8] */
-        b.data[0] = 7.0; b.data[1] = 8.0;
+        b.data[0] = 7.0;
+        b.data[1] = 8.0;
 
         /* res = m * v + b = [1*5 + 2*6 + 7, 3*5 + 4*6 + 8]
          *                = [5 + 12 + 7, 15 + 24 + 8]
@@ -111,9 +126,12 @@ TEST_CASE(test_mat_vec_mul_null_result)
         Vector v = vec_create(2);
         Vector res = {.size = 2, .data = NULL};
 
-        m.data[0] = 1.0; m.data[1] = 2.0;
-        m.data[2] = 3.0; m.data[3] = 4.0;
-        v.data[0] = 5.0; v.data[1] = 6.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
+        v.data[0] = 5.0;
+        v.data[1] = 6.0;
 
         TEST_ASSERT(mat_vec_mul(m, v, &res) == -1);
 
@@ -127,7 +145,8 @@ TEST_CASE(test_mat_vec_mul_null_matrix)
         Vector v = vec_create(2);
         Vector res = vec_create(2);
 
-        v.data[0] = 5.0; v.data[1] = 6.0;
+        v.data[0] = 5.0;
+        v.data[1] = 6.0;
 
         TEST_ASSERT(mat_vec_mul(m, v, &res) == -1);
 
@@ -141,8 +160,10 @@ TEST_CASE(test_mat_vec_mul_null_vector)
         Vector v = {.size = 2, .data = NULL};
         Vector res = vec_create(2);
 
-        m.data[0] = 1.0; m.data[1] = 2.0;
-        m.data[2] = 3.0; m.data[3] = 4.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
 
         TEST_ASSERT(mat_vec_mul(m, v, &res) == -1);
 
@@ -199,9 +220,12 @@ TEST_CASE(test_vec_mat_mul_null_result)
         Matrix m = mat_create(2, 2);
         Vector res = {.size = 2, .data = NULL};
 
-        v.data[0] = 1.0; v.data[1] = 2.0;
-        m.data[0] = 3.0; m.data[1] = 4.0;
-        m.data[2] = 5.0; m.data[3] = 6.0;
+        v.data[0] = 1.0;
+        v.data[1] = 2.0;
+        m.data[0] = 3.0;
+        m.data[1] = 4.0;
+        m.data[2] = 5.0;
+        m.data[3] = 6.0;
 
         TEST_ASSERT(vec_mat_mul(v, m, &res) == -1);
 
@@ -215,7 +239,8 @@ TEST_CASE(test_vec_mat_mul_null_matrix)
         Matrix m = {.rows = 2, .cols = 2, .data = NULL};
         Vector res = vec_create(2);
 
-        v.data[0] = 1.0; v.data[1] = 2.0;
+        v.data[0] = 1.0;
+        v.data[1] = 2.0;
 
         TEST_ASSERT(vec_mat_mul(v, m, &res) == -1);
 
@@ -229,8 +254,10 @@ TEST_CASE(test_vec_mat_mul_null_vector)
         Matrix m = mat_create(2, 2);
         Vector res = vec_create(2);
 
-        m.data[0] = 3.0; m.data[1] = 4.0;
-        m.data[2] = 5.0; m.data[3] = 6.0;
+        m.data[0] = 3.0;
+        m.data[1] = 4.0;
+        m.data[2] = 5.0;
+        m.data[3] = 6.0;
 
         TEST_ASSERT(vec_mat_mul(v, m, &res) == -1);
 
@@ -273,10 +300,14 @@ TEST_CASE(test_mat_vec_add_null_result)
         Vector b = vec_create(2);
         Vector res = {.size = 2, .data = NULL};
 
-        m.data[0] = 1.0; m.data[1] = 2.0;
-        m.data[2] = 3.0; m.data[3] = 4.0;
-        v.data[0] = 5.0; v.data[1] = 6.0;
-        b.data[0] = 7.0; b.data[1] = 8.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
+        v.data[0] = 5.0;
+        v.data[1] = 6.0;
+        b.data[0] = 7.0;
+        b.data[1] = 8.0;
 
         TEST_ASSERT(mat_vec_add(m, v, &b, &res) == -1);
 
@@ -292,8 +323,10 @@ TEST_CASE(test_mat_vec_add_null_matrix)
         Vector b = vec_create(2);
         Vector res = vec_create(2);
 
-        v.data[0] = 5.0; v.data[1] = 6.0;
-        b.data[0] = 7.0; b.data[1] = 8.0;
+        v.data[0] = 5.0;
+        v.data[1] = 6.0;
+        b.data[0] = 7.0;
+        b.data[1] = 8.0;
 
         TEST_ASSERT(mat_vec_add(m, v, &b, &res) == -1);
 
@@ -309,9 +342,12 @@ TEST_CASE(test_mat_vec_add_null_vector)
         Vector b = vec_create(2);
         Vector res = vec_create(2);
 
-        m.data[0] = 1.0; m.data[1] = 2.0;
-        m.data[2] = 3.0; m.data[3] = 4.0;
-        b.data[0] = 7.0; b.data[1] = 8.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
+        b.data[0] = 7.0;
+        b.data[1] = 8.0;
 
         TEST_ASSERT(mat_vec_add(m, v, &b, &res) == -1);
 
@@ -327,9 +363,12 @@ TEST_CASE(test_mat_vec_add_null_bias)
         Vector b = {.size = 2, .data = NULL};
         Vector res = vec_create(2);
 
-        m.data[0] = 1.0; m.data[1] = 2.0;
-        m.data[2] = 3.0; m.data[3] = 4.0;
-        v.data[0] = 5.0; v.data[1] = 6.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
+        v.data[0] = 5.0;
+        v.data[1] = 6.0;
 
         TEST_ASSERT(mat_vec_add(m, v, &b, &res) == -1);
 
@@ -360,10 +399,14 @@ TEST_CASE(test_mat_vec_add_alias_result_eq_b)
         Vector b = vec_create(2);
         Vector res = vec_create(2);
 
-        m.data[0] = 1.0; m.data[1] = 2.0;
-        m.data[2] = 3.0; m.data[3] = 4.0;
-        v.data[0] = 5.0; v.data[1] = 6.0;
-        b.data[0] = 7.0; b.data[1] = 8.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
+        v.data[0] = 5.0;
+        v.data[1] = 6.0;
+        b.data[0] = 7.0;
+        b.data[1] = 8.0;
 
         /* Attempt to alias result with b's storage. */
         Vector aliased_res = {.size = 2, .data = b.data};
@@ -384,9 +427,12 @@ TEST_CASE(test_mat_vec_mul_alias)
         Vector v = vec_create(2);
         Vector res = vec_create(2);
 
-        m.data[0] = 1.0; m.data[1] = 2.0;
-        m.data[2] = 3.0; m.data[3] = 4.0;
-        v.data[0] = 5.0; v.data[1] = 6.0;
+        m.data[0] = 1.0;
+        m.data[1] = 2.0;
+        m.data[2] = 3.0;
+        m.data[3] = 4.0;
+        v.data[0] = 5.0;
+        v.data[1] = 6.0;
 
         /* Attempt to alias result with v's storage. */
         Vector aliased_res = {.size = 2, .data = v.data};
@@ -408,11 +454,17 @@ TEST_CASE(test_mat_vec_mul_round_trip)
 
         /* m = [1, 0, 0]
          *     [0, 1, 0] */
-        m.data[0] = 1.0; m.data[1] = 0.0; m.data[2] = 0.0;
-        m.data[3] = 0.0; m.data[4] = 1.0; m.data[5] = 0.0;
+        m.data[0] = 1.0;
+        m.data[1] = 0.0;
+        m.data[2] = 0.0;
+        m.data[3] = 0.0;
+        m.data[4] = 1.0;
+        m.data[5] = 0.0;
 
         /* v = [5, 6, 7] */
-        v.data[0] = 5.0; v.data[1] = 6.0; v.data[2] = 7.0;
+        v.data[0] = 5.0;
+        v.data[1] = 6.0;
+        v.data[2] = 7.0;
 
         /* prod = m * v = [5, 6] */
         TEST_ASSERT(mat_vec_mul(m, v, &prod) == 0);
@@ -431,12 +483,17 @@ TEST_CASE(test_vec_mat_mul_round_trip)
         Vector prod = vec_create(3);
 
         /* v = [1, 2] */
-        v.data[0] = 1.0; v.data[1] = 2.0;
+        v.data[0] = 1.0;
+        v.data[1] = 2.0;
 
         /* m = [1, 0, 0]
          *     [0, 1, 0] */
-        m.data[0] = 1.0; m.data[1] = 0.0; m.data[2] = 0.0;
-        m.data[3] = 0.0; m.data[4] = 1.0; m.data[5] = 0.0;
+        m.data[0] = 1.0;
+        m.data[1] = 0.0;
+        m.data[2] = 0.0;
+        m.data[3] = 0.0;
+        m.data[4] = 1.0;
+        m.data[5] = 0.0;
 
         /* prod = v^T * m = [1, 2, 0] */
         TEST_ASSERT(vec_mat_mul(v, m, &prod) == 0);

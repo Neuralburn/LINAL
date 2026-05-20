@@ -430,8 +430,8 @@ vec_abs(const Vector v, Vector *__restrict__ result)
 int
 mat_vec_mul(const Matrix m, const Vector v, Vector *__restrict__ result)
 {
-        if (!m.data || !v.data || !result || !result->data ||
-            m.cols != v.size || m.rows != result->size) {
+        if (!m.data || !v.data || !result || !result->data || m.cols != v.size
+            || m.rows != result->size) {
                 vec_error("mat_vec_mul", "null data or dimension mismatch");
                 return -1;
         }
@@ -468,8 +468,8 @@ mat_vec_mul(const Matrix m, const Vector v, Vector *__restrict__ result)
 int
 vec_mat_mul(const Vector v, const Matrix m, Vector *__restrict__ result)
 {
-        if (!v.data || !m.data || !result || !result->data ||
-            v.size != m.rows || m.cols != result->size) {
+        if (!v.data || !m.data || !result || !result->data || v.size != m.rows
+            || m.cols != result->size) {
                 vec_error("vec_mat_mul", "null data or dimension mismatch");
                 return -1;
         }
@@ -508,15 +508,18 @@ vec_mat_mul(const Vector v, const Matrix m, Vector *__restrict__ result)
  * @return 0 on success, -1 on dimension mismatch or invalid pointers
  */
 int
-mat_vec_add(const Matrix m, const Vector v, const Vector *b, Vector *__restrict__ result)
+mat_vec_add(const Matrix m, const Vector v, const Vector *b,
+            Vector *__restrict__ result)
 {
-        if (!m.data || !v.data || !b || !b->data || !result || !result->data ||
-            m.cols != v.size || m.rows != result->size || m.rows != b->size) {
+        if (!m.data || !v.data || !b || !b->data || !result || !result->data
+            || m.cols != v.size || m.rows != result->size
+            || m.rows != b->size) {
                 vec_error("mat_vec_add", "null data or dimension mismatch");
                 return -1;
         }
 
-        if (result->data == m.data || result->data == v.data || result->data == b->data) {
+        if (result->data == m.data || result->data == v.data
+            || result->data == b->data) {
                 vec_error("mat_vec_add", "result aliases input operand");
                 return -1;
         }

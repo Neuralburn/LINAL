@@ -540,7 +540,8 @@ int vec_mat_mul(const Vector v, const Matrix m, Vector *__restrict__ result);
  * @param result Output vector (m)
  * @return 0 on success, -1 on dimension mismatch or invalid pointers
  */
-int mat_vec_add(const Matrix m, const Vector v, const Vector *b, Vector *__restrict__ result);
+int mat_vec_add(const Matrix m, const Vector v, const Vector *b,
+                Vector *__restrict__ result);
 
 #ifdef __cplusplus
 }
