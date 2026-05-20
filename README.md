@@ -8,6 +8,7 @@ A lightweight, high-performance linear algebra library written in C11. Designed 
 
 - **Dense Matrix Operations**: Full support for matrix creation, destruction, copying, addition, multiplication, scaling, transposition, inversion, and determinants
 - **Dense Vector Operations**: First-class 1-D vector type with arithmetic, dot product, L2 norm, normalization, distance, angle, and Hadamard product
+- **Matrix-Vector Operations**: Efficient matrix-vector multiplication, vector-matrix multiplication, and fused affine transforms (Mx + b) for ML workloads
 - **C11 Standard Compliance**: Strict adherence to C11 specification with portable code
 - **Row-Major Memory Layout**: Contiguous memory storage optimized for sequential access patterns
 - **Explicit Memory Management**: Safe allocation and deallocation APIs to prevent leaks
@@ -205,6 +206,18 @@ int    vec_set(Vector *v, size_t index, double value);
 ```c
 void vec_print(const char *label, const Vector v);
 ```
+
+#### Matrix-Vector Operations
+
+```c
+int mat_vec_mul(const Matrix m, const Vector v, Vector *result);
+int vec_mat_mul(const Vector v, const Matrix m, Vector *result);
+int mat_vec_add(const Matrix m, const Vector v, const Vector *b, Vector *result);
+```
+
+- `mat_vec_mul`: Computes $y = M \times v$ (matrix-vector product)
+- `vec_mat_mul`: Computes $y = v^T \times M$ (vector-matrix product)
+- `mat_vec_add`: Fused affine transform $y = M \times v + b$ (common in neural network layers)
 
 For detailed documentation, see the Doxygen comments in `include/linal.h`.
 

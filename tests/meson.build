@@ -252,3 +252,11 @@ test_vec_workloads = executable(
   include_directories: [public_headers, generated_headers],
 )
 test('vec_workloads', test_vec_workloads, timeout: 120)
+
+test_mat_vec = executable(
+  'test_mat_vec',
+  files('test_mat_vec.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+test('mat_vec', test_mat_vec)

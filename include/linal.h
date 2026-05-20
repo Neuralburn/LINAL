@@ -496,6 +496,52 @@ int vec_hadamard(const Vector a, const Vector b, Vector *__restrict__ result);
  */
 int vec_abs(const Vector v, Vector *__restrict__ result);
 
+/**
+ * @brief Multiply a matrix by a vector: result = M * v.
+ *
+ * Computes the matrix-vector product:
+ * @f$ C_i = \sum_j A_{ij} v_j @f$
+ *
+ * Requires A.cols == v.size and result.size == A.rows.
+ *
+ * @param m Input matrix (m x n)
+ * @param v Input vector (n)
+ * @param result Output vector (m)
+ * @return 0 on success, -1 on dimension mismatch or invalid pointers
+ */
+int mat_vec_mul(const Matrix m, const Vector v, Vector *__restrict__ result);
+
+/**
+ * @brief Multiply a vector by a matrix: result = v^T * M.
+ *
+ * Computes the vector-matrix product:
+ * @f$ C_j = \sum_i v_i A_{ij} @f$
+ *
+ * Requires v.size == A.rows and result.size == A.cols.
+ *
+ * @param v Input vector (m)
+ * @param m Input matrix (m x n)
+ * @param result Output vector (n)
+ * @return 0 on success, -1 on dimension mismatch or invalid pointers
+ */
+int vec_mat_mul(const Vector v, const Matrix m, Vector *__restrict__ result);
+
+/**
+ * @brief Fused matrix-vector multiplication and addition: result = M * v + b.
+ *
+ * Computes:
+ * @f$ C_i = (\sum_j A_{ij} v_j) + b_i @f$
+ *
+ * Requires A.cols == v.size, A.rows == b.size, and result.size == A.rows.
+ *
+ * @param m Input matrix (m x n)
+ * @param v Input vector (n)
+ * @param b Input bias vector (m)
+ * @param result Output vector (m)
+ * @return 0 on success, -1 on dimension mismatch or invalid pointers
+ */
+int mat_vec_add(const Matrix m, const Vector v, const Vector *b, Vector *__restrict__ result);
+
 #ifdef __cplusplus
 }
 #endif
