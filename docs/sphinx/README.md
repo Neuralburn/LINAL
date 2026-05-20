@@ -10,12 +10,6 @@ The following packages are required:
 - `python-sphinx` - For generating HTML documentation
 - `python-breathe` - For integrating Doxygen XML with Sphinx
 
-On Arch Linux, install with:
-
-```bash
-sudo pacman -S doxygen python-sphinx python-breathe
-```
-
 ## Building Documentation
 
 ### Quick Start
