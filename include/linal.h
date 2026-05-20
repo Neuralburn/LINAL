@@ -324,7 +324,7 @@ void vec_free(Vector *v);
  * @param result Output vector containing the sum (must not alias a or b)
  * @return 0 on success, -1 on dimension mismatch or invalid pointers
  */
-int vec_add(const Vector a, const Vector b, Vector *__restrict__ result);
+int vec_add(const Vector a, const Vector b, Vector *result);
 
 /**
  * @brief Subtract two vectors element-wise.
@@ -338,7 +338,7 @@ int vec_add(const Vector a, const Vector b, Vector *__restrict__ result);
  * @param result Output vector containing the difference (must not alias a or b)
  * @return 0 on success, -1 on dimension mismatch or invalid result
  */
-int vec_sub(const Vector a, const Vector b, Vector *__restrict__ result);
+int vec_sub(const Vector a, const Vector b, Vector *result);
 
 /**
  * @brief Compute the dot product (inner product) of two vectors.
@@ -374,7 +374,7 @@ double vec_dot(const Vector a, const Vector b);
  * @param result Output vector containing the scaled values (must not alias v)
  * @return 0 on success, -1 if input is invalid
  */
-int vec_scale(const Vector v, double scalar, Vector *__restrict__ result);
+int vec_scale(const Vector v, double scalar, Vector *result);
 
 /**
  * @brief Compute the L2 (Euclidean) norm of a vector.
@@ -413,7 +413,7 @@ int vec_set(Vector *v, size_t index, double value);
  * @param dest Pointer to destination vector (must have matching size)
  * @return 0 on success, -1 if dimensions mismatch or invalid pointers
  */
-int vec_copy(const Vector src, Vector *__restrict__ dest);
+int vec_copy(const Vector src, Vector *dest);
 
 #if LINAL_ENABLE_DEBUG_PRINT
 /**
@@ -439,7 +439,7 @@ void vec_print(const char *label, const Vector v);
  * pre-allocated with matching size)
  * @return 0 on success, -1 if v is zero-length or parameters are invalid
  */
-int vec_normalize(const Vector v, Vector *__restrict__ result);
+int vec_normalize(const Vector v, Vector *result);
 
 /**
  * @brief Compute the Euclidean distance between two vectors.
@@ -481,7 +481,7 @@ double vec_angle(const Vector a, const Vector b);
  * pre-allocated with matching size)
  * @return 0 on success, -1 if sizes differ or parameters are invalid
  */
-int vec_hadamard(const Vector a, const Vector b, Vector *__restrict__ result);
+int vec_hadamard(const Vector a, const Vector b, Vector *result);
 
 /**
  * @brief Compute the element-wise absolute value of a vector.
@@ -494,7 +494,7 @@ int vec_hadamard(const Vector a, const Vector b, Vector *__restrict__ result);
  * pre-allocated with matching size)
  * @return 0 on success, -1 if v is invalid or parameters mismatch
  */
-int vec_abs(const Vector v, Vector *__restrict__ result);
+int vec_abs(const Vector v, Vector *result);
 
 #ifdef __cplusplus
 }

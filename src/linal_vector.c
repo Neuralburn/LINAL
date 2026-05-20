@@ -88,7 +88,7 @@ vec_free(Vector *v)
  * @brief Add two vectors element-wise.
  */
 int
-vec_add(const Vector a, const Vector b, Vector *__restrict__ result)
+vec_add(const Vector a, const Vector b, Vector *result)
 {
         if (!vec_is_valid(&a) || !vec_is_valid(&b) || !result || !result->data
             || a.size != b.size || a.size != result->size) {
@@ -112,7 +112,7 @@ vec_add(const Vector a, const Vector b, Vector *__restrict__ result)
  * @brief Subtract two vectors element-wise.
  */
 int
-vec_sub(const Vector a, const Vector b, Vector *__restrict__ result)
+vec_sub(const Vector a, const Vector b, Vector *result)
 {
         if (!vec_is_valid(&a) || !vec_is_valid(&b) || !result || !result->data
             || a.size != b.size || a.size != result->size) {
@@ -155,7 +155,7 @@ vec_dot(const Vector a, const Vector b)
  * @brief Scale a vector by a scalar factor.
  */
 int
-vec_scale(const Vector v, double scalar, Vector *__restrict__ result)
+vec_scale(const Vector v, double scalar, Vector *result)
 {
         if (!vec_is_valid(&v) || !result || !result->data
             || v.size != result->size) {
@@ -288,7 +288,7 @@ vec_print(const char *label, const Vector v)
  * @brief Normalize a vector to unit length.
  */
 int
-vec_normalize(const Vector v, Vector *__restrict__ result)
+vec_normalize(const Vector v, Vector *result)
 {
         if (!result || v.size != result->size) {
                 vec_error("normalize", "null result or dimension mismatch");
@@ -370,7 +370,7 @@ vec_angle(const Vector a, const Vector b)
  * @brief Compute the element-wise (Hadamard) product of two vectors.
  */
 int
-vec_hadamard(const Vector a, const Vector b, Vector *__restrict__ result)
+vec_hadamard(const Vector a, const Vector b, Vector *result)
 {
         if (!result || a.size != b.size || a.size != result->size) {
                 vec_error("hadamard", "null result or dimension mismatch");
@@ -400,7 +400,7 @@ vec_hadamard(const Vector a, const Vector b, Vector *__restrict__ result)
  * @brief Compute the element-wise absolute value of a vector.
  */
 int
-vec_abs(const Vector v, Vector *__restrict__ result)
+vec_abs(const Vector v, Vector *result)
 {
         if (!result || !vec_is_valid(&v) || v.size != result->size) {
                 vec_error("abs", "null data or dimension mismatch");
