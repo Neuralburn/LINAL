@@ -3,11 +3,17 @@
  * @brief Implementation of Vector operations for LINAL.
  */
 
+#define _GNU_SOURCE
+
 #include "linal.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef __linux__
+#include <sys/mman.h>
+#endif
 
 /* ============ Internal helpers ========================================== */
 
@@ -156,8 +162,13 @@ vec_dot(const Vector a, const Vector b)
         /* Parallel reduction for large vectors.
          * GCC doesn't allow simd + num_threads on same pragma, so we use
          * parallel for with reduction. Compiler auto-vectorizes the inner loop.
-         * Adaptive thread count for memory bandwidth saturation. */
+         * 8 threads = 8 physical cores on target hardware (optimal for MLB). */
         if (count >= 262144) {
+#ifdef __linux__
+                /* Hint sequential access pattern to kernel for better page prefetching */
+                madvise((void *)A, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
+                madvise((void *)B, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
+#endif
 #pragma omp parallel for num_threads(8) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
                         sum += A[i] * B[i];
