@@ -142,9 +142,12 @@ vec_sub(const Vector a, const Vector b, Vector *result)
 /**
  * @brief Compute the dot product of two vectors.
  *
- * Uses multiple accumulators with pairwise summation for numerical precision,
- * and OpenMP parallel SIMD reduction for large vectors.
+ * Uses AVX2+FMA target for SIMD vectorization, multiple accumulators with
+ * pairwise summation for numerical precision, and OpenMP parallel reduction
+ * with explicit chunking for large vectors.
  */
+#pragma GCC push_options
+#pragma GCC target("avx2,fma")
 __attribute__((optimize("O3")))
 double
 vec_dot(const Vector a, const Vector b)
@@ -202,6 +205,7 @@ vec_dot(const Vector a, const Vector b)
         /* Pairwise summation tree */
         return ((s[0]+s[1])+(s[2]+s[3]))+((s[4]+s[5])+(s[6]+s[7]));
 }
+#pragma GCC pop_options
 
 /**
  * @brief Scale a vector by a scalar factor.
