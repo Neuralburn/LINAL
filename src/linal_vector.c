@@ -135,7 +135,11 @@ vec_sub(const Vector a, const Vector b, Vector *result)
 
 /**
  * @brief Compute the dot product of two vectors.
+ *
+ * Uses multiple accumulators with pairwise summation for numerical precision,
+ * and OpenMP parallel SIMD reduction for large vectors.
  */
+__attribute__((optimize("O3")))
 double
 vec_dot(const Vector a, const Vector b)
 {
@@ -143,12 +147,45 @@ vec_dot(const Vector a, const Vector b)
                 return NAN;
         }
 
+        const double *__restrict__ A = a.data;
+        const double *__restrict__ B = b.data;
+        size_t count = a.size;
         double sum = 0.0;
-        for (size_t i = 0; i < a.size; i++) {
-                sum += a.data[i] * b.data[i];
+
+#if defined(_OPENMP)
+        /* Parallel SIMD reduction for large vectors.
+         * Threshold: 1M elements (~8MB per vector, 16MB total read). */
+        if (count >= 1048576) {
+#pragma omp parallel for simd reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        sum += A[i] * B[i];
+                }
+                return sum;
+        }
+#endif
+
+        /* 8 accumulators with pairwise summation tree for ILP + precision */
+        double s[8];
+        for (int k = 0; k < 8; k++)
+                s[k] = 0.0;
+
+        #pragma GCC ivdep
+        for (size_t i = 0; i + 7 < count; i += 8) {
+                s[0] += A[i]     * B[i];
+                s[1] += A[i + 1] * B[i + 1];
+                s[2] += A[i + 2] * B[i + 2];
+                s[3] += A[i + 3] * B[i + 3];
+                s[4] += A[i + 4] * B[i + 4];
+                s[5] += A[i + 5] * B[i + 5];
+                s[6] += A[i + 6] * B[i + 6];
+                s[7] += A[i + 7] * B[i + 7];
+        }
+        for (size_t i = count & ~7; i < count; i++) {
+                s[0] += A[i] * B[i];
         }
 
-        return sum;
+        /* Pairwise summation tree */
+        return ((s[0]+s[1])+(s[2]+s[3]))+((s[4]+s[5])+(s[6]+s[7]));
 }
 
 /**
