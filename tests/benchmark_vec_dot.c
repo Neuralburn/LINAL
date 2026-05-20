@@ -1,6 +1,9 @@
 /*
  * @file benchmark_vec_dot.c
  * @brief Benchmark vec_dot across vector sizes with correctness validation.
+ *
+ * Uses CLOCK_MONOTONIC_RAW for nanosecond precision.
+ * Runs multiple repeats per size and reports median to reduce noise.
  */
 
 #include "linal.h"
@@ -11,11 +14,12 @@
 #include <string.h>
 #include <time.h>
 
-#define REPEATS_SMALL 50
-#define REPEATS_LARGE 10
+#define REPEATS 20
 #define EPSILON 1e-6
 
-static const size_t sizes[] = {64, 128, 256, 512, 1024, 4096, 16384, 65536};
+static const size_t sizes[] = {
+    65536, 262144, 1048576, 4194304, 16777216, 67108864
+};
 static const int n_sizes = sizeof(sizes) / sizeof(sizes[0]);
 
 static void fill_vector(Vector *v, uint64_t seed)
@@ -28,9 +32,22 @@ static void fill_vector(Vector *v, uint64_t seed)
     }
 }
 
-static double clock_ms(struct timespec *s, struct timespec *e)
+static double
+median_double(double *arr, int n)
 {
-    return (e->tv_sec - s->tv_sec) * 1000.0 + (e->tv_nsec - s->tv_nsec) / 1e6;
+    /* Simple insertion sort for small n */
+    for (int i = 1; i < n; i++) {
+        double key = arr[i];
+        int j = i - 1;
+        while (j >= 0 && arr[j] > key) {
+            arr[j + 1] = arr[j];
+            j--;
+        }
+        arr[j + 1] = key;
+    }
+    if (n % 2 == 0)
+        return (arr[n / 2 - 1] + arr[n / 2]) / 2.0;
+    return arr[n / 2];
 }
 
 int main(void)
@@ -38,12 +55,13 @@ int main(void)
     bool all_valid = true;
     double primary_us = 0.0;
 
-    printf("=== vec_dot benchmark ===\n");
-    printf("%-8s %12s %10s\n", "Size", "Time(us)", "Valid");
+    printf("=== vec_dot benchmark (median of %d runs) ===\n", REPEATS);
+    printf("%-12s %12s %10s\n", "Size", "Time(us)", "Valid");
+
+    double times[REPEATS];
 
     for (int s = 0; s < n_sizes; s++) {
         size_t dim = sizes[s];
-        int repeats = (dim <= 1024) ? REPEATS_SMALL : REPEATS_LARGE;
 
         Vector a = vec_create(dim);
         Vector b = vec_create(dim);
@@ -74,19 +92,32 @@ int main(void)
 
         /* Warmup */
         vec_dot(a, b);
+        vec_dot(a, b);
+        vec_dot(a, b);
 
-        struct timespec ts, te;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        for (int r = 0; r < repeats; r++)
-            vec_dot(a, b);
-        clock_gettime(CLOCK_MONOTONIC, &te);
+        /* Timed runs */
+        for (int r = 0; r < REPEATS; r++) {
+            struct timespec ts, te;
+            clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+            result = vec_dot(a, b);
+            clock_gettime(CLOCK_MONOTONIC_RAW, &te);
 
-        double total_us = clock_ms(&ts, &te) * 1000.0 / (double)repeats;
+            double ns = (double)(te.tv_sec - ts.tv_sec) * 1e9
+                       + (double)(te.tv_nsec - ts.tv_nsec);
+            times[r] = ns / 1000.0; /* Convert to µs */
+        }
+
+        /* Prevent compiler from optimizing away the result */
+        if (result != result) { /* Never true, but uses 'result' */
+            printf("unexpected\n");
+        }
+
+        double median_us = median_double(times, REPEATS);
 
         if (s == n_sizes - 1)
-            primary_us = total_us;
+            primary_us = median_us;
 
-        printf("%8zu %12.2f %5s\n", dim, total_us, "OK");
+        printf("%12zu %12.3f %5s\n", dim, median_us, "OK");
 
         vec_free(&a);
         vec_free(&b);
@@ -95,9 +126,9 @@ int main(void)
     printf("\n=== Correctness: %s ===\n", all_valid ? "PASS" : "FAIL");
 
     if (all_valid)
-        printf("METRIC total_us=%.2f\n", primary_us);
+        printf("METRIC total_us=%.3f\n", primary_us);
     else
-        printf("METRIC total_us=999999.00\n");
+        printf("METRIC total_us=999999.000\n");
 
     return EXIT_SUCCESS;
 }
