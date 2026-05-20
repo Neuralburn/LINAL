@@ -167,7 +167,7 @@ vec_dot(const Vector a, const Vector b)
                 madvise((void *)A, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
                 madvise((void *)B, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
 #endif
-#pragma omp parallel for num_threads(8) schedule(static, 1048576) \
+#pragma omp parallel for num_threads(8) schedule(static, 65536) \
                 default(none) firstprivate(A, B, count) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
                         sum += A[i] * B[i];
