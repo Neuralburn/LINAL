@@ -215,10 +215,6 @@ int vec_mat_mul(const Vector v, const Matrix m, Vector *result);
 int mat_vec_add(const Matrix m, const Vector v, const Vector *b, Vector *result);
 ```
 
-- `mat_vec_mul`: Computes $y = M \times v$ (matrix-vector product)
-- `vec_mat_mul`: Computes $y = v^T \times M$ (vector-matrix product)
-- `mat_vec_add`: Fused affine transform $y = M \times v + b$ (common in neural network layers)
-
 For detailed documentation, see the Doxygen comments in `include/linal.h`.
 
 ## Use Cases
