@@ -154,16 +154,11 @@ vec_dot(const Vector a, const Vector b)
 
 #if defined(_OPENMP)
         /* Parallel reduction for large vectors.
-         * Adaptive threshold: 256K elements (~2MB per vector). */
+         * GCC doesn't allow simd + num_threads on same pragma, so we use
+         * parallel for with reduction. Compiler auto-vectorizes the inner loop.
+         * Adaptive thread count for memory bandwidth saturation. */
         if (count >= 262144) {
-                int linal_threads;
-                if (count < 1048576)
-                        linal_threads = 2;
-                else if (count < 4194304)
-                        linal_threads = 4;
-                else
-                        linal_threads = 8;
-#pragma omp parallel for num_threads(linal_threads) reduction(+:sum)
+#pragma omp parallel for num_threads(8) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
                         sum += A[i] * B[i];
                 }
