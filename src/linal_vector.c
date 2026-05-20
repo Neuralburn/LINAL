@@ -153,10 +153,17 @@ vec_dot(const Vector a, const Vector b)
         double sum = 0.0;
 
 #if defined(_OPENMP)
-        /* Parallel SIMD reduction for large vectors.
-         * Threshold: 1M elements (~8MB per vector, 16MB total read). */
-        if (count >= 1048576) {
-#pragma omp parallel for simd reduction(+:sum)
+        /* Parallel reduction for large vectors.
+         * Adaptive threshold: 256K elements (~2MB per vector). */
+        if (count >= 262144) {
+                int linal_threads;
+                if (count < 1048576)
+                        linal_threads = 2;
+                else if (count < 4194304)
+                        linal_threads = 4;
+                else
+                        linal_threads = 8;
+#pragma omp parallel for num_threads(linal_threads) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
                         sum += A[i] * B[i];
                 }
@@ -179,6 +186,9 @@ vec_dot(const Vector a, const Vector b)
                 s[5] += A[i + 5] * B[i + 5];
                 s[6] += A[i + 6] * B[i + 6];
                 s[7] += A[i + 7] * B[i + 7];
+                /* Prefetch next cache line every 4 iterations */
+                if ((i >> 5) & 1)
+                        __builtin_prefetch(&A[i + 256], 0, 1);
         }
         for (size_t i = count & ~7; i < count; i++) {
                 s[0] += A[i] * B[i];
