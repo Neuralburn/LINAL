@@ -295,6 +295,11 @@ vec_normalize(const Vector v, Vector *result)
                 return -1;
         }
 
+        if (result->data == v.data) {
+                vec_error("normalize", "result aliases input");
+                return -1;
+        }
+
         double norm = vec_norm_l2(v);
         if (norm <= 0.0) {
                 vec_error("normalize", "zero-length vector");
@@ -404,6 +409,11 @@ vec_abs(const Vector v, Vector *result)
 {
         if (!result || !vec_is_valid(&v) || v.size != result->size) {
                 vec_error("abs", "null data or dimension mismatch");
+                return -1;
+        }
+
+        if (result->data == v.data) {
+                vec_error("abs", "result aliases input");
                 return -1;
         }
 

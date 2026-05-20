@@ -321,8 +321,9 @@ void vec_free(Vector *v);
  *
  * @param a First operand
  * @param b Second operand
- * @param result Output vector containing the sum (must not alias a or b)
- * @return 0 on success, -1 on dimension mismatch or invalid pointers
+ * @param result Output vector containing the sum
+ * @return 0 on success, -1 on dimension mismatch, invalid pointers, or if
+ *         result aliases a or b
  */
 int vec_add(const Vector a, const Vector b, Vector *result);
 
@@ -335,8 +336,9 @@ int vec_add(const Vector a, const Vector b, Vector *result);
  *
  * @param a First operand (minuend)
  * @param b Second operand (subtrahend)
- * @param result Output vector containing the difference (must not alias a or b)
- * @return 0 on success, -1 on dimension mismatch or invalid result
+ * @param result Output vector containing the difference
+ * @return 0 on success, -1 on dimension mismatch, invalid pointers, or if
+ *         result aliases a or b
  */
 int vec_sub(const Vector a, const Vector b, Vector *result);
 
@@ -371,8 +373,8 @@ double vec_dot(const Vector a, const Vector b);
  *
  * @param v Input vector to scale
  * @param scalar Scalar multiplier
- * @param result Output vector containing the scaled values (must not alias v)
- * @return 0 on success, -1 if input is invalid
+ * @param result Output vector containing the scaled values
+ * @return 0 on success, -1 if input is invalid or result aliases v
  */
 int vec_scale(const Vector v, double scalar, Vector *result);
 
@@ -411,7 +413,8 @@ int vec_set(Vector *v, size_t index, double value);
  *
  * @param src Source vector to copy from
  * @param dest Pointer to destination vector (must have matching size)
- * @return 0 on success, -1 if dimensions mismatch or invalid pointers
+ * @return 0 on success, -1 if dimensions mismatch, invalid pointers, or
+ *         self-copy (aliasing)
  */
 int vec_copy(const Vector src, Vector *dest);
 
@@ -437,7 +440,8 @@ void vec_print(const char *label, const Vector v);
  * @param v Input vector
  * @param result Output vector containing the normalized values (must be
  * pre-allocated with matching size)
- * @return 0 on success, -1 if v is zero-length or parameters are invalid
+ * @return 0 on success, -1 if v is zero-length, parameters are invalid, or
+ *         result aliases v
  */
 int vec_normalize(const Vector v, Vector *result);
 
@@ -479,7 +483,8 @@ double vec_angle(const Vector a, const Vector b);
  * @param b Second operand
  * @param result Output vector containing the element-wise product (must be
  * pre-allocated with matching size)
- * @return 0 on success, -1 if sizes differ or parameters are invalid
+ * @return 0 on success, -1 if sizes differ, parameters are invalid, or result
+ *         aliases a or b
  */
 int vec_hadamard(const Vector a, const Vector b, Vector *result);
 
@@ -492,7 +497,8 @@ int vec_hadamard(const Vector a, const Vector b, Vector *result);
  * @param v Input vector
  * @param result Output vector containing the absolute values (must be
  * pre-allocated with matching size)
- * @return 0 on success, -1 if v is invalid or parameters mismatch
+ * @return 0 on success, -1 if v is invalid, parameters mismatch, or result
+ *         aliases v
  */
 int vec_abs(const Vector v, Vector *result);
 
