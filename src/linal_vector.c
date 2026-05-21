@@ -142,7 +142,7 @@ vec_add(const Vector a, const Vector b, Vector *result)
                         }
                 }
                 /* Tail without prefetch */
-                #pragma omp simd aligned(A:16) aligned(B:16) aligned(R:16)
+                #pragma omp simd safelen(2) aligned(A:16) aligned(B:16) aligned(R:16)
                 for (size_t i = tail_start; i < count; i++) {
                         R[i] = A[i] + B[i];
                 }
