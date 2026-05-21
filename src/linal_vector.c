@@ -118,21 +118,9 @@ vec_add(const Vector a, const Vector b, Vector *result)
         double *__restrict__ R = result->data;
         size_t count = a.size;
 
-        /* 8-wide unrolled loop for AVX2 auto-vectorization */
-        #pragma GCC ivdep
-        for (size_t i = 0; i + 7 < count; i += 8) {
-                __builtin_prefetch(&A[i + 128], 0, 1);
-                __builtin_prefetch(&B[i + 128], 0, 1);
-                R[i]     = A[i]     + B[i];
-                R[i + 1] = A[i + 1] + B[i + 1];
-                R[i + 2] = A[i + 2] + B[i + 2];
-                R[i + 3] = A[i + 3] + B[i + 3];
-                R[i + 4] = A[i + 4] + B[i + 4];
-                R[i + 5] = A[i + 5] + B[i + 5];
-                R[i + 6] = A[i + 6] + B[i + 6];
-                R[i + 7] = A[i + 7] + B[i + 7];
-        }
-        for (size_t i = count & ~7; i < count; i++) {
+        /* omp simd forces vectorization; safelen(2) = 2 doubles per AVX2 lane */
+        #pragma omp simd safelen(2)
+        for (size_t i = 0; i < count; i++) {
                 R[i] = A[i] + B[i];
         }
 
