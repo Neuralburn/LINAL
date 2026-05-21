@@ -233,7 +233,14 @@ vec_scale(const Vector v, double scalar, Vector *result)
 
 /**
  * @brief Compute the L2 norm of a vector.
+ *
+ * Uses AVX2+FMA target for SIMD vectorization, multiple accumulators with
+ * pairwise summation for numerical precision, and OpenMP parallel reduction
+ * with explicit chunking for large vectors.
  */
+#pragma GCC push_options
+#pragma GCC target("avx2,fma")
+__attribute__((optimize("O3")))
 double
 vec_norm_l2(const Vector v)
 {
@@ -241,14 +248,55 @@ vec_norm_l2(const Vector v)
                 return NAN;
         }
 
+        const double *__restrict__ A = v.data;
+        size_t count = v.size;
         double sum = 0.0;
-        for (size_t i = 0; i < v.size; i++) {
-                double val = v.data[i];
-                sum += val * val;
+
+#if defined(_OPENMP)
+        /* Parallel reduction for large vectors.
+         * Explicit data sharing clauses help compiler optimize access patterns.
+         * 4 threads — fewer threads, less cache contention for single array. */
+        if (count >= 16384) {
+#ifdef __linux__
+                madvise((void *)A, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
+#endif
+#pragma omp parallel for num_threads(4) schedule(static, 131072) \
+                default(none) firstprivate(A, count) reduction(+:sum)
+                for (size_t i = 0; i < count; i++) {
+                        double val = A[i];
+                        sum += val * val;
+                }
+                return sqrt(sum);
+        }
+#endif
+
+        /* 8 accumulators with pairwise summation tree for ILP + precision */
+        double s[8];
+        for (int k = 0; k < 8; k++)
+                s[k] = 0.0;
+
+        #pragma GCC ivdep
+        for (size_t i = 0; i + 7 < count; i += 8) {
+                s[0] += A[i]     * A[i];
+                s[1] += A[i + 1] * A[i + 1];
+                s[2] += A[i + 2] * A[i + 2];
+                s[3] += A[i + 3] * A[i + 3];
+                s[4] += A[i + 4] * A[i + 4];
+                s[5] += A[i + 5] * A[i + 5];
+                s[6] += A[i + 6] * A[i + 6];
+                s[7] += A[i + 7] * A[i + 7];
+                /* Prefetch next cache line every 4 iterations */
+                if ((i >> 5) & 1)
+                        __builtin_prefetch(&A[i + 256], 0, 1);
+        }
+        for (size_t i = count & ~7; i < count; i++) {
+                s[0] += A[i] * A[i];
         }
 
-        return sqrt(sum);
+        /* Pairwise summation tree */
+        return sqrt(((s[0]+s[1])+(s[2]+s[3]))+((s[4]+s[5])+(s[6]+s[7])));
 }
+#pragma GCC pop_options
 
 /**
  * @brief Get element at specified index.
