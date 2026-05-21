@@ -126,10 +126,16 @@ vec_add(const Vector a, const Vector b, Vector *result)
 #pragma omp parallel for num_threads(2) schedule(static, 1)
                 for (size_t block = 0; block < full_blocks; block++) {
                         size_t start = block * block_size;
-                        /* Prefetch next block */
-                        __builtin_prefetch(&A[start + block_size], 0, 3);
-                        __builtin_prefetch(&B[start + block_size], 0, 3);
-                        __builtin_prefetch(&R[start + block_size], 1, 3);
+                        /* Prefetch next 2 blocks for deeper lookahead */
+                        size_t pf1 = start + block_size;
+                        size_t pf2 = start + 2 * block_size;
+                        __builtin_prefetch(&A[pf1], 0, 3);
+                        __builtin_prefetch(&B[pf1], 0, 3);
+                        __builtin_prefetch(&R[pf1], 1, 3);
+                        if (pf2 < count) {
+                                __builtin_prefetch(&A[pf2], 0, 1);
+                                __builtin_prefetch(&B[pf2], 0, 1);
+                        }
                         #pragma omp simd safelen(2)
                         for (size_t i = start; i < start + block_size; i++) {
                                 R[i] = A[i] + B[i];
