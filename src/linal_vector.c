@@ -92,7 +92,11 @@ vec_free(Vector *v)
 
 /**
  * @brief Add two vectors element-wise.
+ *
+ * Uses OpenMP parallel + SIMD for large vectors (2 threads to limit
+ * memory bandwidth pressure) and omp simd for the serial path.
  */
+__attribute__((optimize("O3")))
 int
 vec_add(const Vector a, const Vector b, Vector *result)
 {
@@ -107,8 +111,50 @@ vec_add(const Vector a, const Vector b, Vector *result)
                 return -1;
         }
 
-        for (size_t i = 0; i < a.size; i++) {
-                result->data[i] = a.data[i] + b.data[i];
+        size_t count = a.size;
+
+#if defined(_OPENMP)
+        /* 2 threads — balances parallelism with memory bandwidth for 3-array access */
+        if (count >= 262144) {
+                const double *A = a.data;
+                const double *B = b.data;
+                double *R       = result->data;
+                /* Process in 64K blocks for cache-friendly static scheduling */
+                size_t block_size = 163840;
+                size_t full_blocks = count / block_size;
+                size_t tail_start  = full_blocks * block_size;
+#pragma omp parallel for num_threads(2) schedule(static, 2)
+                for (size_t block = 0; block < full_blocks; block++) {
+                        size_t start = block * block_size;
+                        /* Prefetch next 2 blocks for deeper lookahead */
+                        size_t pf1 = start + block_size;
+                        size_t pf2 = start + 2 * block_size;
+                        __builtin_prefetch(&A[pf1], 0, 3);
+                        __builtin_prefetch(&B[pf1], 0, 3);
+                        __builtin_prefetch(&R[pf1], 1, 3);
+                        if (pf2 < count) {
+                                __builtin_prefetch(&A[pf2], 0, 1);
+                                __builtin_prefetch(&B[pf2], 0, 1);
+                                __builtin_prefetch(&R[pf2], 1, 1);
+                        }
+                        #pragma omp simd safelen(2) aligned(A:32) aligned(B:32) aligned(R:32)
+                        for (size_t i = start; i < start + block_size; i++) {
+                                R[i] = A[i] + B[i];
+                        }
+                }
+                /* Tail without prefetch */
+                #pragma omp simd safelen(2) aligned(A:16) aligned(B:16) aligned(R:16)
+                for (size_t i = tail_start; i < count; i++) {
+                        R[i] = A[i] + B[i];
+                }
+        } else
+#endif
+        {
+                /* Serial SIMD path */
+                #pragma omp simd safelen(2)
+                for (size_t i = 0; i < count; i++) {
+                        result->data[i] = a.data[i] + b.data[i];
+                }
         }
 
         return 0;
