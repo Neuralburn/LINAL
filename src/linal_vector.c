@@ -120,7 +120,7 @@ vec_add(const Vector a, const Vector b, Vector *result)
                 const double *B = b.data;
                 double *R       = result->data;
                 /* Process in 64K blocks for cache-friendly static scheduling */
-                size_t block_size = 131072;
+                size_t block_size = 98304;
 #pragma omp parallel for num_threads(2) schedule(static, 1)
                 for (size_t block = 0; block < (count + block_size - 1) / block_size; block++) {
                         size_t start = block * block_size;
