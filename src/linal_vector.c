@@ -136,7 +136,7 @@ vec_add(const Vector a, const Vector b, Vector *result)
                                 __builtin_prefetch(&A[pf2], 0, 1);
                                 __builtin_prefetch(&B[pf2], 0, 1);
                         }
-                        #pragma omp simd safelen(8) aligned(A:32) aligned(B:32) aligned(R:32)
+                        #pragma omp simd safelen(8) aligned(A:16) aligned(B:16) aligned(R:16)
                         for (size_t i = start; i < start + block_size; i++) {
                                 R[i] = A[i] + B[i];
                         }
