@@ -190,8 +190,8 @@ vec_sub(const Vector a, const Vector b, Vector *result)
                 const double *A = a.data;
                 const double *B = b.data;
                 double *R       = result->data;
-                /* Process in 120K blocks for cache-friendly static scheduling */
-                size_t block_size = 122880;
+                /* Process in 112K blocks for cache-friendly static scheduling */
+                size_t block_size = 114688;
                 size_t full_blocks = count / block_size;
                 size_t tail_start  = full_blocks * block_size;
 #pragma omp parallel for num_threads(2) schedule(static, 2)
