@@ -121,22 +121,24 @@ vec_add(const Vector a, const Vector b, Vector *result)
                 double *R       = result->data;
                 /* Process in 64K blocks for cache-friendly static scheduling */
                 size_t block_size = 98304;
+                size_t full_blocks = count / block_size;
+                size_t tail_start  = full_blocks * block_size;
 #pragma omp parallel for num_threads(2) schedule(static, 1)
-                for (size_t block = 0; block < (count + block_size - 1) / block_size; block++) {
+                for (size_t block = 0; block < full_blocks; block++) {
                         size_t start = block * block_size;
-                        size_t end   = start + block_size < count ? start + block_size : count;
                         /* Prefetch next block */
-                        size_t next_start = end;
-                        size_t next_end   = next_start + block_size < count ? next_start + block_size : count;
-                        if (next_start < count) {
-                                __builtin_prefetch(&A[next_start], 0, 3);
-                                __builtin_prefetch(&B[next_start], 0, 3);
-                                __builtin_prefetch(&R[next_start], 1, 3);
-                        }
+                        __builtin_prefetch(&A[start + block_size], 0, 3);
+                        __builtin_prefetch(&B[start + block_size], 0, 3);
+                        __builtin_prefetch(&R[start + block_size], 1, 3);
                         #pragma omp simd safelen(2)
-                        for (size_t i = start; i < end; i++) {
+                        for (size_t i = start; i < start + block_size; i++) {
                                 R[i] = A[i] + B[i];
                         }
+                }
+                /* Tail without prefetch */
+                #pragma omp simd safelen(2)
+                for (size_t i = tail_start; i < count; i++) {
+                        R[i] = A[i] + B[i];
                 }
         } else
 #endif
