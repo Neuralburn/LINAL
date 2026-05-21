@@ -140,6 +140,13 @@ benchmark_vec_dot = executable(
   include_directories: [public_headers, generated_headers],
 )
 
+benchmark_vec_norm_l2 = executable(
+  'benchmark_vec_norm_l2',
+  files('benchmark_vec_norm_l2.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+
 # Run all tests
 test('mat_create', test_mat_create)
 test('mat_memory', test_mat_memory)
