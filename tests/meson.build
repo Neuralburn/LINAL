@@ -154,6 +154,13 @@ benchmark_vec_add = executable(
   include_directories: [public_headers, generated_headers],
 )
 
+benchmark_vec_sub = executable(
+  'benchmark_vec_sub',
+  files('benchmark_vec_sub.c'),
+  dependencies: [linal_dep],
+  include_directories: [public_headers, generated_headers],
+)
+
 # Run all tests
 test('mat_create', test_mat_create)
 test('mat_memory', test_mat_memory)
