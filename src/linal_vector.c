@@ -260,7 +260,7 @@ vec_norm_l2(const Vector v)
 #ifdef __linux__
                 madvise((void *)A, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
 #endif
-#pragma omp parallel for num_threads(4) schedule(static, 65536) \
+#pragma omp parallel for num_threads(4) schedule(static, 131072) \
                 default(none) firstprivate(A, count) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
                         double val = A[i];
