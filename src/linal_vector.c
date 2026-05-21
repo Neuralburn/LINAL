@@ -256,7 +256,7 @@ vec_norm_l2(const Vector v)
         /* Parallel reduction for large vectors.
          * Explicit data sharing clauses help compiler optimize access patterns.
          * 4 threads — fewer threads, less cache contention for single array. */
-        if (count >= 32768) {
+        if (count >= 16384) {
 #ifdef __linux__
                 madvise((void *)A, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
 #endif
