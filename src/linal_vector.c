@@ -116,9 +116,19 @@ vec_add(const Vector a, const Vector b, Vector *result)
 #if defined(_OPENMP)
         /* 2 threads — balances parallelism with memory bandwidth for 3-array access */
         if (count >= 1048576) {
-#pragma omp parallel for simd num_threads(2) safelen(2)
-                for (size_t i = 0; i < count; i++) {
-                        result->data[i] = a.data[i] + b.data[i];
+                const double *A = a.data;
+                const double *B = b.data;
+                double *R       = result->data;
+                /* Process in 64K blocks for cache-friendly static scheduling */
+                size_t block_size = 65536;
+#pragma omp parallel for num_threads(2) schedule(static, 1)
+                for (size_t block = 0; block < (count + block_size - 1) / block_size; block++) {
+                        size_t start = block * block_size;
+                        size_t end   = start + block_size < count ? start + block_size : count;
+                        #pragma omp simd safelen(2)
+                        for (size_t i = start; i < end; i++) {
+                                R[i] = A[i] + B[i];
+                        }
                 }
         } else
 #endif
