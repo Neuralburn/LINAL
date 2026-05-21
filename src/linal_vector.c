@@ -115,7 +115,7 @@ vec_add(const Vector a, const Vector b, Vector *result)
 
 #if defined(_OPENMP)
         /* 2 threads — balances parallelism with memory bandwidth for 3-array access */
-        if (count >= 524288) {
+        if (count >= 262144) {
                 const double *A = a.data;
                 const double *B = b.data;
                 double *R       = result->data;
