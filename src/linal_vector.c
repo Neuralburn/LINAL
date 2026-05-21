@@ -255,12 +255,12 @@ vec_norm_l2(const Vector v)
 #if defined(_OPENMP)
         /* Parallel reduction for large vectors.
          * Explicit data sharing clauses help compiler optimize access patterns.
-         * 8 threads = 8 physical cores on target hardware (optimal for MLB). */
+         * 4 threads — fewer threads, less cache contention for single array. */
         if (count >= 262144) {
 #ifdef __linux__
                 madvise((void *)A, count * sizeof(double), POSIX_MADV_SEQUENTIAL);
 #endif
-#pragma omp parallel for num_threads(8) schedule(static, 65536) \
+#pragma omp parallel for num_threads(4) schedule(static, 65536) \
                 default(none) firstprivate(A, count) reduction(+:sum)
                 for (size_t i = 0; i < count; i++) {
                         double val = A[i];
