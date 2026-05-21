@@ -135,6 +135,7 @@ vec_add(const Vector a, const Vector b, Vector *result)
                         if (pf2 < count) {
                                 __builtin_prefetch(&A[pf2], 0, 1);
                                 __builtin_prefetch(&B[pf2], 0, 1);
+                                __builtin_prefetch(&R[pf2], 1, 1);
                         }
                         #pragma omp simd safelen(2) aligned(A:8) aligned(B:8) aligned(R:8)
                         for (size_t i = start; i < start + block_size; i++) {
