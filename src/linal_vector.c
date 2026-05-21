@@ -93,11 +93,9 @@ vec_free(Vector *v)
 /**
  * @brief Add two vectors element-wise.
  *
- * Uses AVX2 target for SIMD vectorization with explicit loop unrolling
- * (8 elements per iteration) and compiler auto-vectorization.
+ * Uses OpenMP parallel + SIMD for large vectors (2 threads to limit
+ * memory bandwidth pressure) and omp simd for the serial path.
  */
-#pragma GCC push_options
-#pragma GCC target("avx2,fma")
 __attribute__((optimize("O3")))
 int
 vec_add(const Vector a, const Vector b, Vector *result)
@@ -113,20 +111,27 @@ vec_add(const Vector a, const Vector b, Vector *result)
                 return -1;
         }
 
-        const double *__restrict__ A = a.data;
-        const double *__restrict__ B = b.data;
-        double *__restrict__ R = result->data;
         size_t count = a.size;
 
-        /* omp simd forces vectorization; safelen(2) = 2 doubles per AVX2 lane */
-        #pragma omp simd safelen(2)
-        for (size_t i = 0; i < count; i++) {
-                R[i] = A[i] + B[i];
+#if defined(_OPENMP)
+        /* 2 threads — balances parallelism with memory bandwidth for 3-array access */
+        if (count >= 1048576) {
+#pragma omp parallel for simd num_threads(2) safelen(2)
+                for (size_t i = 0; i < count; i++) {
+                        result->data[i] = a.data[i] + b.data[i];
+                }
+        } else
+#endif
+        {
+                /* Serial SIMD path */
+                #pragma omp simd safelen(2)
+                for (size_t i = 0; i < count; i++) {
+                        result->data[i] = a.data[i] + b.data[i];
+                }
         }
 
         return 0;
 }
-#pragma GCC pop_options
 
 /**
  * @brief Subtract two vectors element-wise.
