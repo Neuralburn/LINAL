@@ -125,6 +125,14 @@ vec_add(const Vector a, const Vector b, Vector *result)
                 for (size_t block = 0; block < (count + block_size - 1) / block_size; block++) {
                         size_t start = block * block_size;
                         size_t end   = start + block_size < count ? start + block_size : count;
+                        /* Prefetch next block */
+                        size_t next_start = end;
+                        size_t next_end   = next_start + block_size < count ? next_start + block_size : count;
+                        if (next_start < count) {
+                                __builtin_prefetch(&A[next_start], 0, 3);
+                                __builtin_prefetch(&B[next_start], 0, 3);
+                                __builtin_prefetch(&R[next_start], 1, 3);
+                        }
                         #pragma omp simd safelen(2)
                         for (size_t i = start; i < end; i++) {
                                 R[i] = A[i] + B[i];
